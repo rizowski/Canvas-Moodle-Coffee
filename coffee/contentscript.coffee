@@ -1,9 +1,12 @@
 $(document).ready ->
-	$.ajaxSetup({
-		cache: true
+    $.ajaxSetup({
+        cache: true
+        headers: { 
+            "Authorization" : "Bearer " + localStorage.canvaskey,
+            "Access-Control-Allow-Origin" : "*"}
     })
 	class CanvasPlugin
-		assignment_url : "https://lms.neumont.edu/api/v1/courses?include[]=total_scores"
+		assignment_url : "https://lms.neumont.edu/api/v1/courses?include[]=total_scores&state[]=available"
 		canvas_courses_url : "https://lms.neumont.edu/courses/"
 
 		constructor : () ->
@@ -51,6 +54,7 @@ $(document).ready ->
 			final_string
 
 		parse_canvas_date : (date) ->
+			return if date == null
 			date_string = date.split('T')
 			date = date_string[0].split('-')
 			year = date[0]
@@ -84,47 +88,52 @@ $(document).ready ->
 
 	class Courses extends CanvasPlugin
 		constructor : () ->
+		@data = []
 
 		query_courses : () ->
-			return if localStorage.canvaskey == null
+			return if localStorage["canvaskey"] == null
 			return $.ajax
 				type: 'GET'
+				crossDomain: true
 				url: @assignment_url
-				headers: { "Authorization" : "Bearer 1~7sbODArZOvxR9wlRt42ORJgTgqBG2m6OxTJlOMdphBwnhv4KOSjXVLZh3eIvahxw" } # + localStorage["canvaskey"] }
 
 		get_courses: () ->
-			data = null
-			@query_courses().success (response) ->
-				current_courses = []
-				console.log reponse
-				for item in response
-					continue if item == null
+			@query_courses()
+				.success (response) ->
 					today = new Date()
 					tools = new Tools()
-					end_date = tools.parse_canvas_date(item.end_at)
+					for item in response
+						console.log item
+						end_date = tools.parse_canvas_date(item.end_at)
+						if end_date >= today
+							course = {}
+							course.id = item.id
+							course.start_date = tools.parse_canvas_date(item.start_at)
+							course.end_date = end_date
+							course.current_grade = item.enrollments[0].computed_current_grade
+							course.current_score = item.enrollments[0].computed_current_score
+							course.final_grade = item.enrollments[0].computed_final_grade
+							course.final_score = item.enrollments[0].computed_final_score
+							course.url = @canvas_courses_url + course.id
+							@data.push course
+							debugger
+					@data
+				.error (data, msg) ->
+					@data = ["Error"]
+					console.log msg
+			return @data
 
-					console.log end_date >= today
 
-					if end_date >= today
-						course = {}
-						course.id = item.id
-						course.start_date = tools.parse_canvas_date(item.start_at)
-						course.end_date = end_date
-						course.current_grade = item.enrollments[0].computed_current_grade
-						course.current_score = item.enrollments[0].computed_current_score
-						course.final_grade = item.enrollments[0].computed_final_grade
-						course.final_score = item.enrollments[0].computed_final_score
-						course.url = @canvas_courses_url + course.id
-						current_courses.push course
-				data = current_courses
-			return data
 
 		get_grades: () ->
-			$('gradeload').show()
+			# $('gradeload').show()
+			console.log 'grade load'
 
 		get_assignments: () ->
 			$('#assignload').show()
 			courses = @get_courses()
+			console.log 'assignments load'
+			console.log courses
 
 	( ->
 		checkIfAssideHasLoaded = setInterval( ->
@@ -132,20 +141,12 @@ $(document).ready ->
 				config = new Config()
 				cal = new Calendar()
 				cour = new Courses()
+				# localStorage["canvaskey"] = "1~m0DERGv46QUx4v8n3Dg9QQrivOvwnyKYaWNHWEba6CEEGhSG8jZsLTMQFy0e2w8Q"
 
 				config.setup()
 				cal.get_calendar()
 				cour.get_grades()
 				cour.get_assignments()
-
-				# config = new Config()
-		    	# cal = new Calendar()
-		      	# cour = new Courses()
-
-		      	# config.setup()
-		      	# cal.get_calendar()
-		      	# cour.getGrades()
-		      	# cour.getAssignments()
 
 				clearInterval checkIfAssideHasLoaded
 		, 50)
