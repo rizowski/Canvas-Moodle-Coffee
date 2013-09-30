@@ -18,6 +18,7 @@ module.exports = (grunt) ->
 			compile: {
 				files: {
 					'out/contentscript.js': 'coffee/contentscript.coffee'
+					'out/options.js': 'coffee/options.coffee'
 				}
 			}
 		}
@@ -25,8 +26,8 @@ module.exports = (grunt) ->
 		copy: {
 			main: {
 				files: [
-					{expand: true, flatten: true, src:['res/*'], dest: 'out/', filter: 'isFile'},
-					{expand: true, flatten: true, src:['img/*'], dest: 'out/', filter: 'isFile'},
+					{expand: true, flatten: true, src:['res/*'], dest: 'out/', filter: 'isFile'}
+					{expand: true, flatten: true, src:['img/*'], dest: 'out/', filter: 'isFile'}
 					{expand: true, flatten: true, src:['js/*'],  dest: 'out/', filter: 'isFile'}
 				]
 			}
