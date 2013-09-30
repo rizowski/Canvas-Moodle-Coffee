@@ -1,1 +1,1 @@
-coffee -b -w -o js/ -c coffee/
+grunt

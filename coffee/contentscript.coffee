@@ -3,7 +3,20 @@ $(document).ready ->
         cache: true
         headers: { 
             "Authorization" : "Bearer " + localStorage.canvaskey,
-            "Access-Control-Allow-Origin" : "*"}
+            "Access-Control-Allow-Origin" : "*"
+        }
+        dataType : "json"
+        dataFilter : (data, type) ->
+        	console.log type
+        	JSON.parse(data) if type == "json"
+        statusCode: {
+        	401 : () ->
+        		console.log 'Auth token needed'
+        	404 : () ->
+        		console.log 'Page not found'
+        	500 : () ->
+        		console.log 'Server error'
+        }
     })
 	class CanvasPlugin
 		assignment_url : "https://lms.neumont.edu/api/v1/courses?include[]=total_scores&state[]=available"
@@ -100,15 +113,16 @@ $(document).ready ->
 		get_courses: () ->
 			@query_courses()
 				.success (response) ->
+					response = $(response)
 					today = new Date()
 					tools = new Tools()
 					for item in response
 						console.log item
-						end_date = tools.parse_canvas_date(item.end_at)
+						end_date = new Date(item.end_at)
 						if end_date >= today
 							course = {}
 							course.id = item.id
-							course.start_date = tools.parse_canvas_date(item.start_at)
+							course.start_date = new Date(item.start_at)
 							course.end_date = end_date
 							course.current_grade = item.enrollments[0].computed_current_grade
 							course.current_score = item.enrollments[0].computed_current_score
@@ -118,9 +132,11 @@ $(document).ready ->
 							@data.push course
 							debugger
 					@data
-				.error (data, msg) ->
-					@data = ["Error"]
-					console.log msg
+				.error (data, msg, error) ->
+					console.log arguments[0]
+					console.log msg + " " + error
+				.complete () ->
+					console.log 'done'
 			return @data
 
 
@@ -133,7 +149,7 @@ $(document).ready ->
 			$('#assignload').show()
 			courses = @get_courses()
 			console.log 'assignments load'
-			console.log courses
+			console.log @data
 
 	( ->
 		checkIfAssideHasLoaded = setInterval( ->
