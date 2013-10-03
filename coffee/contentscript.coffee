@@ -24,10 +24,19 @@ $(document).ready ->
 		format_link: (url, text) ->
 			"<a href='" + url + "'>" + text + "</a>"
 
+		table_row: (contents) ->
+			result = "<tr>"
+			for content in contents
+				result += "<td>"
+				result += content
+				result += "</td>"
+			result += "</tr>"
+
 		format_table: (headers, contents_arr) ->
+			headers ?= []
+			contents_arr ?= []
 			return if headers.length != contents_arr.length
 
-			final_string = ""
 			final_string = "<table>"
 			final_string += "<thead>"
 			for header in headers
@@ -37,12 +46,7 @@ $(document).ready ->
 			final_string += "</thead>"
 			final_string += "<tbody>"
 			for content_items in contents_arr
-				final_string += "<tr>"
-				for content in content_items
-					final_string += "<td>"
-					final_string += content
-					final_string += "</td>"
-				final_string += "</tr>"
+				@table_row content_items
 			final_string += "</tbody>"
 			final_string += "</table>"
 
@@ -77,7 +81,6 @@ $(document).ready ->
 			$("aside#right-side").children('h2').remove()
 			$("aside#right-side").children('ul').remove()
 			$("aside#right-side").prepend '<div class="assignments"><h2><a style="float: right; font-size: 10px; font-weight: normal;" class="event-list-view-calendar small-calendar" href="https://lms.neumont.edu/calendar">View Calendar</a>Upcoming Assignments</h2><div class="assignment-summary-div"><img id="assignload" style="display: block; margin-left: auto; margin-right: auto" src="images/ajax-reload-animated.gif"></img></div></div>'
-			$("aside#right-side").prepend '<div class="events_list"><h2>Grade Summary</h2><div class="grade-summary-div"><img id="gradeload" style="display: block;margin-left: auto; margin-right: auto" src="images/ajax-reload-animated.gif"></img></div></div>'
 			$("aside#right-side").prepend '<div class="courses"><h2>Current Courses</h2><div class="course-summary-div"><img id="courseload" style="display: block;margin-left: auto; margin-right: auto" src="images/ajax-reload-animated.gif"></img></div></div>'
 			$("aside#right-side").prepend '<div class="calendar"><h2>Calendar</h2><div class="calendar-div"><img id="calload" style="display: block; margin-left: auto; margin-right: auto" src="images/ajax-reload-animated.gif"></img></div></div>'
 
@@ -122,15 +125,6 @@ $(document).ready ->
 		        	@success_setup(data)
 		        	undefined
 
-		# get_all_courses: () ->
-		# 	@query_courses()
-		# 		.success (@success_setup)
-		# 		.error (data, msg, error) ->
-		# 			console.log arguments[0]
-		# 			console.log msg + " " + error
-		# 		.complete () ->
-		# 			console.log 'done'
-
 		success_setup: (response) ->
 			arr = []
 			response = $(response)
@@ -160,13 +154,18 @@ $(document).ready ->
 			$('#assignload').show()
 			
 			console.log courses
+			final_string = ""
 			for course in courses
-				name = "("+course.code+")"
-				name += " " + course.name
-				name += " (" + course.final_grade+")"
+				final_string = "<table class='course-table'><thead><th></th><th></th><th></th></thead><tbody>"
+				course_link = @tools.format_link(course.url, course.name)
+				final_string += @tools.table_row ["["+course.code+"]", course_link, "("+course.final_grade+")"]
+				final_string += "</tbody></table>"
 
-				url = @tools.format_link(course.url, name)
-				$('.course-summary-div').html(url).hide
+			$('.course-summary-div').html(final_string).hide
+			$('.course-table').css('margin', '0px auto')
+			table = $('.course-table')
+			table.css('margin','0px')
+			table.css('width', '100%')
 			$('.course-summary-div').fadeIn 500
 			console.log 'assignments load'
 			
