@@ -18,25 +18,7 @@ $(document).ready ->
         		console.log 'Server error'
         }
 
-	class CanvasPlugin
-		assignment_url : "https://lms.neumont.edu/api/v1/courses?include[]=total_scores&state[]=available"
-		canvas_courses_url : "https://lms.neumont.edu/courses/"
-
-		constructor : () ->
-
-
-	class Config extends CanvasPlugin
-		constructor : () ->
-
-		setup : () ->
-			$('aside#right-side').children('div').remove()
-			$("aside#right-side").children('h2').remove()
-			$("aside#right-side").children('ul').remove()
-			$("aside#right-side").prepend '<div class="assignments"><h2><a style="float: right; font-size: 10px; font-weight: normal;" class="event-list-view-calendar small-calendar" href="https://lms.neumont.edu/calendar">View Calendar</a>Upcoming Assignments</h2><div class="assignment-summary-div"><img id="assignload" style="display: block; margin-left: auto; margin-right: auto" src="images/ajax-reload-animated.gif"></img></div></div>'
-			$("aside#right-side").prepend '<div class="events_list"><h2>Grade Summary</h2><div class="grade-summary-div"><img id="gradeload" style="display: block;margin-left: auto; margin-right: auto" src="images/ajax-reload-animated.gif"></img></div></div>'
-			$("aside#right-side").prepend '<div class="calendar"><h2>Calendar</h2><div class="calendar-div"><img id="calload" style="display: block; margin-left: auto; margin-right: auto" src="images/ajax-reload-animated.gif"></img></div></div>'
-
-	class Tools extends CanvasPlugin
+	class Tools
 		constructor : () ->
 
 		format_link: (url, text) ->
@@ -79,6 +61,27 @@ $(document).ready ->
 		create_error : (message) ->
 			"<span style='color: red'>" + message + "</span>"
 
+	class CanvasPlugin
+		assignment_url : "https://lms.neumont.edu/api/v1/courses?include[]=total_scores&state[]=available"
+		canvas_courses_url : "https://lms.neumont.edu/courses/"
+		tools : (new Tools())
+
+		constructor : ->
+
+
+	class Config extends CanvasPlugin
+		constructor : ->
+
+		setup : () ->
+			$('aside#right-side').children('div').remove()
+			$("aside#right-side").children('h2').remove()
+			$("aside#right-side").children('ul').remove()
+			$("aside#right-side").prepend '<div class="assignments"><h2><a style="float: right; font-size: 10px; font-weight: normal;" class="event-list-view-calendar small-calendar" href="https://lms.neumont.edu/calendar">View Calendar</a>Upcoming Assignments</h2><div class="assignment-summary-div"><img id="assignload" style="display: block; margin-left: auto; margin-right: auto" src="images/ajax-reload-animated.gif"></img></div></div>'
+			$("aside#right-side").prepend '<div class="events_list"><h2>Grade Summary</h2><div class="grade-summary-div"><img id="gradeload" style="display: block;margin-left: auto; margin-right: auto" src="images/ajax-reload-animated.gif"></img></div></div>'
+			$("aside#right-side").prepend '<div class="courses"><h2>Current Courses</h2><div class="course-summary-div"><img id="courseload" style="display: block;margin-left: auto; margin-right: auto" src="images/ajax-reload-animated.gif"></img></div></div>'
+			$("aside#right-side").prepend '<div class="calendar"><h2>Calendar</h2><div class="calendar-div"><img id="calload" style="display: block; margin-left: auto; margin-right: auto" src="images/ajax-reload-animated.gif"></img></div></div>'
+
+
 	class Calendar extends CanvasPlugin
 		constructor : () ->
 
@@ -94,15 +97,12 @@ $(document).ready ->
 					$('.calendar-div').html(cal).hide
 				error: (data) ->
 					resp = $(data)
-					error = new Tools()
-					$('.calendar-div').html error.create_error("Error Retrieving your calendar.")
+					$('.calendar-div').html @tools.create_error("Error Retrieving your calendar.")
 				complete: () ->
 					$('.calendar-div').fadeIn 500
 
 	class Courses extends CanvasPlugin
 		constructor : () ->
-		
-		data = []
 
 		query_courses : () ->
 			return if localStorage["canvaskey"] == null
@@ -118,60 +118,70 @@ $(document).ready ->
 		        # dataFilter : (data, type) ->
 		        # 	console.log type
 		        # 	JSON.parse(data) if type == "json"
+		        success: (data) =>
+		        	@success_setup(data)
+		        	undefined
 
-		get_courses: () ->
-			@query_courses()
-				.success (response) ->
-					response = $(response)
-					today = new Date()
-					tools = new Tools()
-					for item in response
-						console.log item
-						end_date = new Date(item.end_at)
-						if end_date >= today
-							course = {}
-							course.id = item.id
-							course.start_date = new Date(item.start_at)
-							course.end_date = end_date
-							course.current_grade = item.enrollments[0].computed_current_grade
-							course.current_score = item.enrollments[0].computed_current_score
-							course.final_grade = item.enrollments[0].computed_final_grade
-							course.final_score = item.enrollments[0].computed_final_score
-							course.url = @canvas_courses_url + course.id
-							data.push course
-					data
-				.error (data, msg, error) ->
-					console.log arguments[0]
-					console.log msg + " " + error
-				.complete () ->
-					console.log 'done'
-			return @data
+		# get_all_courses: () ->
+		# 	@query_courses()
+		# 		.success (@success_setup)
+		# 		.error (data, msg, error) ->
+		# 			console.log arguments[0]
+		# 			console.log msg + " " + error
+		# 		.complete () ->
+		# 			console.log 'done'
 
-
+		success_setup: (response) ->
+			arr = []
+			response = $(response)
+			today = new Date()
+			for item in response
+				end_date = new Date(item.end_at)
+				if end_date >= today
+					course = {}
+					course.id = item.id
+					course.start_date = new Date(item.start_at)
+					course.end_date = end_date
+					course.code = item.course_code
+					course.name = item.name
+					course.current_grade = item.enrollments[0].computed_current_grade
+					course.current_score = item.enrollments[0].computed_current_score
+					course.final_grade = item.enrollments[0].computed_final_grade
+					course.final_score = item.enrollments[0].computed_final_score
+					course.url = @canvas_courses_url + course.id
+					arr.push course
+			@get_assignments(arr)
 
 		get_grades: () ->
 			# $('gradeload').show()
 			console.log 'grade load'
 
-		get_assignments: () ->
+		get_assignments: (courses) ->
 			$('#assignload').show()
-			courses = @get_courses()
-			console.log 'assignments load'
-			console.log @data
+			
+			console.log courses
+			for course in courses
+				name = "("+course.code+")"
+				name += " " + course.name
+				name += " (" + course.final_grade+")"
 
+				url = @tools.format_link(course.url, name)
+				$('.course-summary-div').html(url).hide
+			$('.course-summary-div').fadeIn 500
+			console.log 'assignments load'
+			
 	( ->
 		checkIfAssideHasLoaded = setInterval( ->
 			if $('ul.events').length > 0
 				config = new Config()
 				cal = new Calendar()
 				cour = new Courses()
-				# localStorage["canvaskey"] = "1~m0DERGv46QUx4v8n3Dg9QQrivOvwnyKYaWNHWEba6CEEGhSG8jZsLTMQFy0e2w8Q"
 
 				config.setup()
 				cal.get_calendar()
-				cour.get_grades()
-				cour.get_assignments()
+				cour.query_courses()
 
 				clearInterval checkIfAssideHasLoaded
+			undefined
 		, 50)
 	)()
