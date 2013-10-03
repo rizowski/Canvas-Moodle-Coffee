@@ -1,14 +1,14 @@
 $(document).ready ->
-    $.ajaxSetup({
+    $.ajaxSetup
         cache: true
-        headers: { 
-            "Authorization" : "Bearer " + localStorage.canvaskey,
-            "Access-Control-Allow-Origin" : "*"
-        }
-        dataType : "json"
-        dataFilter : (data, type) ->
-        	console.log type
-        	JSON.parse(data) if type == "json"
+        # headers: { 
+        #     "Authorization" : "Bearer " + localStorage.canvaskey,
+        #     "Access-Control-Allow-Origin" : "*"
+        # }
+        # dataType : "json"
+        # dataFilter : (data, type) ->
+        # 	console.log type
+        # 	JSON.parse(data) if type == "json"
         statusCode: {
         	401 : () ->
         		console.log 'Auth token needed'
@@ -17,7 +17,7 @@ $(document).ready ->
         	500 : () ->
         		console.log 'Server error'
         }
-    })
+
 	class CanvasPlugin
 		assignment_url : "https://lms.neumont.edu/api/v1/courses?include[]=total_scores&state[]=available"
 		canvas_courses_url : "https://lms.neumont.edu/courses/"
@@ -101,7 +101,8 @@ $(document).ready ->
 
 	class Courses extends CanvasPlugin
 		constructor : () ->
-		@data = []
+		
+		data = []
 
 		query_courses : () ->
 			return if localStorage["canvaskey"] == null
@@ -109,6 +110,14 @@ $(document).ready ->
 				type: 'GET'
 				crossDomain: true
 				url: @assignment_url
+				headers: { 
+		            "Authorization" : "Bearer " + localStorage.canvaskey,
+		            "Access-Control-Allow-Origin" : "*"
+		        }
+		        dataType : "json"
+		        # dataFilter : (data, type) ->
+		        # 	console.log type
+		        # 	JSON.parse(data) if type == "json"
 
 		get_courses: () ->
 			@query_courses()
@@ -129,9 +138,8 @@ $(document).ready ->
 							course.final_grade = item.enrollments[0].computed_final_grade
 							course.final_score = item.enrollments[0].computed_final_score
 							course.url = @canvas_courses_url + course.id
-							@data.push course
-							debugger
-					@data
+							data.push course
+					data
 				.error (data, msg, error) ->
 					console.log arguments[0]
 					console.log msg + " " + error
