@@ -122,10 +122,10 @@ $(document).ready ->
 		        # 	console.log type
 		        # 	JSON.parse(data) if type == "json"
 		        success: (data) =>
-		        	@success_setup(data)
+		        	@success(data)
 		        	undefined
 
-		success_setup: (response) ->
+		success: (response) ->
 			arr = []
 			response = $(response)
 			today = new Date()
@@ -146,14 +146,13 @@ $(document).ready ->
 					arr.push course
 			@get_assignments(arr)
 
-		get_grades: () ->
+		get_assignments: () ->
 			# $('gradeload').show()
 			console.log 'grade load'
 
 		get_assignments: (courses) ->
 			$('#assignload').show()
 			
-			console.log courses
 			final_string = ""
 			for course in courses
 				final_string = "<table class='course-table'><thead><th></th><th></th><th></th></thead><tbody>"
