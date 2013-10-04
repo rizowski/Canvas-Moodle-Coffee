@@ -1,8 +1,18 @@
 $(document).ready ->
-    $.ajaxSetup
+	canvaskey = ""
+
+	setkey = (item) =>
+		canvaskey = item
+	getcanvaskey = () =>
+		chrome.storage.local.get('canvaskey', (item) ->
+			setkey(item.canvaskey)
+			)
+
+	$.ajaxSetup
         cache: true
+        # for the mean time, this is commented out due to problems with XSS the calendar
         # headers: { 
-        #     "Authorization" : "Bearer " + localStorage.canvaskey,
+        #     "Authorization" : "Bearer " + canvaskey,
         #     "Access-Control-Allow-Origin" : "*"
         # }
         # dataType : "json"
@@ -11,6 +21,9 @@ $(document).ready ->
         # 	JSON.parse(data) if type == "json"
         statusCode: {
         	401 : () ->
+        		notice = $('#notice')
+        		notice.html '<span style="color: red">You are not authorized. Make sure you have an Auth-Token saved.</span>'
+        		$('#notice-container').fadeIn 500
         		console.log 'Auth token needed'
         	404 : () ->
         		console.log 'Page not found'
@@ -19,8 +32,9 @@ $(document).ready ->
         }
 
 	class Tools
-		constructor : () ->
 
+		constructor : () ->
+		
 		format_link: (url, text) ->
 			"<a href='" + url + "'>" + text + "</a>"
 
@@ -66,24 +80,37 @@ $(document).ready ->
 			"<span style='color: red'>" + message + "</span>"
 
 	class CanvasPlugin
-		assignment_url : "https://lms.neumont.edu/api/v1/courses?include[]=total_scores&state[]=available"
-		canvas_courses_url : "https://lms.neumont.edu/courses/"
+		course_apiurl : "/api/v1/courses?include[]=total_scores&state[]=available"
+		canvas_courses_url : "/courses/"
+
 		tools : (new Tools())
 
 		constructor : ->
 
-
 	class Config extends CanvasPlugin
 		constructor : ->
 
-		setup : () ->
+		remove : () ->
 			$('aside#right-side').children('div').remove()
 			$("aside#right-side").children('h2').remove()
 			$("aside#right-side").children('ul').remove()
+			
+		add_divs : () ->
 			$("aside#right-side").prepend '<div class="assignments"><h2><a style="float: right; font-size: 10px; font-weight: normal;" class="event-list-view-calendar small-calendar" href="https://lms.neumont.edu/calendar">View Calendar</a>Upcoming Assignments</h2><div class="assignment-summary-div"><img id="assignload" style="display: block; margin-left: auto; margin-right: auto" src="images/ajax-reload-animated.gif"></img></div></div>'
 			$("aside#right-side").prepend '<div class="courses"><h2>Current Courses</h2><div class="course-summary-div"><img id="courseload" style="display: block;margin-left: auto; margin-right: auto" src="images/ajax-reload-animated.gif"></img></div></div>'
 			$("aside#right-side").prepend '<div class="calendar"><h2>Calendar</h2><div class="calendar-div"><img id="calload" style="display: block; margin-left: auto; margin-right: auto" src="images/ajax-reload-animated.gif"></img></div></div>'
+			$("aside#right-side").prepend '<div id="notice-container" style="display: none;"><h2>Canvas to Moodle Notice</h2><div id="notice"></div></div>'
 
+		prettyfy : () ->
+			notice = $('#notice-container')
+			notice.css('background', 'white')
+			notice.css('border', '1px solid #bbb')
+			notice.css('padding', '10px')
+
+		setup : () ->
+			@remove()
+			@add_divs()
+			@prettyfy()
 
 	class Calendar extends CanvasPlugin
 		constructor : () ->
@@ -108,13 +135,13 @@ $(document).ready ->
 		constructor : () ->
 
 		query_courses : () ->
-			return if localStorage["canvaskey"] == null
+			console.log canvaskey
 			return $.ajax
 				type: 'GET'
 				crossDomain: true
-				url: @assignment_url
+				url: @course_apiurl
 				headers: { 
-		            "Authorization" : "Bearer " + localStorage.canvaskey,
+		            "Authorization" : "Bearer " + canvaskey,
 		            "Access-Control-Allow-Origin" : "*"
 		        }
 		        dataType : "json"
@@ -182,4 +209,5 @@ $(document).ready ->
 				clearInterval checkIfAssideHasLoaded
 			undefined
 		, 50)
+		getcanvaskey()
 	)()

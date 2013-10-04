@@ -21,7 +21,8 @@
     ],
     "permissions":[
         "https://*.instructure.com/*",
-        "https://lms.neumont.edu/*"
+        "https://lms.neumont.edu/*",
+        "storage"
     ],
     "web_accessible_resources":[
         "contentscript.js.map"
