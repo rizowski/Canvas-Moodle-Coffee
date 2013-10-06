@@ -23,17 +23,7 @@ $(document).ready ->
         # dataFilter : (data, type) ->
         #   console.log type
         #   JSON.parse(data) if type == "json"
-        statusCode: {
-          401 : () ->
-            notice = $('#notice')
-            notice.html '<span style="color: red">You are not authorized. Make sure you have an Auth-Token saved.</span>'
-            $('#notice-container').fadeIn 500
-            console.log 'Auth token needed'
-          404 : () ->
-            console.log 'Page not found'
-          500 : () ->
-            console.log 'Server error'
-        }
+        
 
   class Tools
 
@@ -63,20 +53,9 @@ $(document).ready ->
 
       final_string
 
-    parse_canvas_date : (date) ->
-      return if date == null
-      date_string = date.split('T')
-      date = date_string[0].split('-')
-      year = date[0]
-      month = date[1]
-      day = date[2]
-
-      new Date(year, month, day)
-
     create_error : (message) ->
       "<span style='color: red'>#{message}</span>"
 
-    # add assignments to courses when ittterating over the courses into your own object. ok :D
     parse_assignment: (assignment) ->
       "<tr><td>#{assignment.due_date}</td><td>#{@format_link assignment.url, assignment.name}</td><td>#{assignment.points_possible}</td></tr>"
 
@@ -100,44 +79,45 @@ $(document).ready ->
       $("aside#right-side").children('ul').remove()
       
     add_divs : () ->
-      $("aside#right-side").append '<div id="notice-container" style="display: none;">
+      $("aside#right-side").append "<div id='notice-container' style='display: none;'>
             <h2>Canvas to Moodle Notice</h2>
-            <div id="notice"></div>
-            </div>'
+            <div id='notice'></div>
+            </div>"
 
-      $("aside#right-side").append '<div class="calendar">
-            <h2 style="display: none;">Calendar</h2>
-            <div class="calendar-div">
-              <img id="calload" style="display: block; margin: 0 auto;" src="images/ajax-reload-animated.gif"/>
-            </div></div>'
+      $("aside#right-side").append "<div class='calendar'>
+            <h2 style='display: none;'>Calendar</h2>
+            <img id='calload' style='display: block; margin: 0 auto;' src='images/ajax-reload-animated.gif'/>
+            <div class='calendar-div' style='display: none;'>
+              
+            </div></div>"
 
-      $("aside#right-side").append '<div class="courses">
+      $("aside#right-side").append "<div class='courses'>
             <h2>Current Courses</h2>
-            <div class="course-summary-div">
-              <img id="courseload" style="display: block; margin: 0 auto;" src="images/ajax-reload-animated.gif"/>
-              <table id="course-table" style="display: none;">
+            <div class='course-summary-div'>
+              <img id='courseload' style='display: block; margin: 0 auto;' src='images/ajax-reload-animated.gif'/>
+              <table id='course-table' style='display: none;'>
                 <thead>
                   <th>Code</th>
                   <th>Name</th>
                   <th>Grade</th>
                 </thead>
-                <tbody id="course-t-body"></tbody>
+                <tbody id='course-t-body'></tbody>
               </table>
-            </div></div>'
+            </div></div>"
 
-      $("aside#right-side").append '<div class="assignments">
-            <h2><a style="float: right; font-size: 10px; font-weight: normal;" class="icon-calendar-day standalone-icon" href="https://lms.neumont.edu/calendar">View Calendar</a>Upcoming Assignments</h2>
-            <div class="assignment-summary-div">
-              <img id="assignload" style="display: block; margin-left: auto; margin-right: auto" src="images/ajax-reload-animated.gif"/>
-              <table id="assignment-table" style="display: none;">
+      $("aside#right-side").append "<div class='assignments'>
+            <h2><a style='float: right; font-size: 10px; font-weight: normal;' class='icon-calendar-day standalone-icon' href='/calendar'>View Calendar</a>Upcoming Assignments</h2>
+            <div class='assignment-summary-div'>
+              <img id='assignload' style='display: block; margin-left: auto; margin-right: auto' src='images/ajax-reload-animated.gif'/>
+              <table id='assignment-table' style='display: none;'>
                 <thead>
                   <th>Date</th>
                   <th>Name</th>
                   <th>Worth</th>
                 </thead>
-                <tbody id="assign-t-body"></tbody>
+                <tbody id='assign-t-body'></tbody>
               </table>
-            </div></div>'
+            </div></div>"
 
     prettyfy : () ->
       notice = $('#notice-container')
@@ -154,14 +134,18 @@ $(document).ready ->
     constructor : () ->
 
     get_calendar : () ->
-      $('#calload').show
-      $('.calendar-div').clndr()
-      $('#calload').hide()
+      loading = $('#calload')
+      loading.show
+      calendar = $('.calendar-div')
+      calendar.clndr()
+      
+      canvas_header = $('#header')
 
       day = $('.day')
       table = $('.clndr-table')
-      header = $('.header-day')
+      table_header = $('.header-day')
       month = $('.month')
+      today = $('.today')
       $('.clndr-control-button').hide()
 
       month_text = month.html()
@@ -170,24 +154,39 @@ $(document).ready ->
       month_header.css 'text-align', 'center'
 
       table.css 'width', '100%'
-      header.css 'text-align', 'center'
-      header.css 'background', '#eee'
-      header.css 'font-weight', 'bold'
+      
+      table_header.css 'text-align', 'center'
+      table_header.css 'background', '#eee'
+      table_header.css 'font-weight', 'bold'
+      
       day.css 'background', '#fff'
       day.css 'padding', '2px'
       day.css 'text-align', 'center'
 
+      today.css 'background', canvas_header.css('background-color')
+
+      loading.hide()
+      calendar.fadeIn 500
+
   class Courses extends CanvasPlugin
 
     current_courses = []
-    all_assignments = []
+    all_assignments : []
     hit_counter = 0
+    error_hit_counter = 0
 
     assignment_sort: (obj1, obj2) ->
-      obj1.due_date - obj2.due_date
+      if not obj1
+        return -1
+      if not obj2
+        return -1
+      
 
     constructor : () ->
       @current_courses = []
+      @all_assignments = []
+      @hit_counter = 0
+      @error_hit_counter = 0
 
     query_courses : () ->
       return $.ajax
@@ -235,20 +234,23 @@ $(document).ready ->
                 console.log 'Server error'
             }
         success: (data) =>
+          @hit_counter++
           @success_assignment(data)
         error: (xhr, status, error) =>
           console.log "QueryAssignments: #{status}, #{error}"
+          @error_hit_counter++
         complete: (xhr, status) =>
           console.log status
           $('#assignload').hide()
+          
 
     success_assignment: (response) ->
       response = $(response)
-      today = new Date()
+      today = moment()
       for item in response
         assignment = {}
-        assignment.due_date = new Date(item.due_at)
-        if assignment.due_date < today
+        assignment.due_date = moment(item.due_at)
+        if assignment.due_date >= today
           assignment.id = item.id
           assignment.name = item.name
           assignment.description = item.description
@@ -261,18 +263,20 @@ $(document).ready ->
             assignment.points_earned = item.submission.current_score
             assignment.grade = item.submission.grade
           @all_assignments.push assignment
-      @get_assignments
+      counter = @hit_counter + @error_hit_counter
+      if counter = @current_courses.length
+        @get_assignments()
 
     success_course: (response) ->
       arr = []
       response = $(response)
-      today = new Date()
+      today = moment()
       for item in response
-        end_date = new Date(item.end_at)
+        end_date = moment(item.end_at)
         if end_date >= today
           course = {}
           course.id = item.id
-          course.start_date = new Date(item.start_at)
+          course.start_date = moment(item.start_at)
           course.end_date = end_date
           course.code = item.course_code
           course.name = item.name
@@ -291,7 +295,19 @@ $(document).ready ->
       for course in courses
         @query_assignments(course.id)
         course_link = @tools.format_link(course.url, course.name)
-        final_string += @tools.table_row ["[#{course.code}]", course_link, "(#{course.final_grade})"]
+        course_grade = ""
+        if course.start_date >= moment()
+          if course.current_grade
+            course_grade = "#{course.current_grade}"
+          else if course.current_score
+            course_grade = "#{course.current_score}"
+          else if course.final_grade
+            course_grade = "#{course.final_grade}"
+          else if course.final_score
+            course_grade = "#{course.final_score}"
+          else
+            course_grade = "NA"
+        final_string += @tools.table_row ["[#{course.code}]", course_link, "(#{course_grade})"]
       table = $('#course-table')
       tbody = $('#course-t-body')
 
@@ -307,43 +323,68 @@ $(document).ready ->
     get_assignments: () ->
       final_string = ""
       summary = $('.assignment-summary-div')
-      @hit_counter++
-      if @current_course.length == hit_counter
-        if @all_assignments.length > 0
-          @all_assignments.sort(assignment_sort())
-          for assignment in @all_assignments
-            # if assignment.submission?
-              # continue
+      if @all_assignments.length > 0
+        @all_assignments.sort (a, b) ->
+          a.due_date - b.due_date
+        seventh_day = moment().add('days', 7)
+        for assignment in @all_assignments
+          if assignment.due_date <= seventh_day
             assignment_link = @tools.format_link(assignment.url, assignment.name)
-            console.log assignment.submission?
             turned_in = (assignment.submission?)
-            date = $.datepicker.formatDate('mm-dd-yyyy', assignment.due_date)
-            final_string += @tools.table_row [date, assignment_link, turned_in]
-          tbody = $('#assign-t-body')
-          tbody.html final_string
+            date = null
+            if(assignment.due_date == moment())
+              date = assignment.due_date.format("[Today at] h:m a ")
+            else
+              date = assignment.due_date.format("dd DD")
+            final_string += "<tr><td class='assign-date'>#{date}</td><td class='assign-name'>#{assignment_link}</td><td class='assign-points'>#{assignment.points_possible}</td></tr>"
+        tbody = $('#assign-t-body')
 
-          table = $('#assignment-table')
-          table.css('margin', '0px auto')
-          table.css('margin','0px')
-          table.css('width', '100%')
-        else
-          summary.html final_string
+        tbody.html final_string
+
+        assign_date = $('.assign-date')
+        assign_name = $('.assign-name')
+        assign_points = $('.assign-points')
+
+        assign_date.css 'width', '20%'
+        assign_date.css 'text-align', 'center'
+
+        assign_name.css 'width', '60%'
+        # assign_name.css 'width', '60%'
+
+        assign_points.css 'width', '20%'
+        assign_points.css 'text-align', 'center'
+
+        table = $('#assignment-table')
+        table.css('margin', '0px auto')
+        table.css('margin','0px')
+        table.css('width', '100%')
+        table.fadeIn 500
+      else
+        summary.html final_string
 
       summary.fadeIn 500
       console.log 'assignments load'
-      
+  
+  startup = () =>
+    config = new Config()
+    cal = new Calendar()
+    cour = new Courses()
+
+    config.setup()
+    cal.get_calendar()
+    cour.query_courses()
+    if canvaskey == ""
+      notice = $('#notice')
+      url = $('.user_name>a').attr("href")
+      notice.html "<span style='color: red'>You are not authorized. Make sure you have an Auth-Token saved. You can create a token here: <a href='#{url}'>Create Token</a></span>"
+      $('.calendar').hide()
+      $('.courses').hide()
+      $('.assignments').hide()
+      $('#notice-container').fadeIn 500
   ( ->
     checkIfAssideHasLoaded = setInterval( ->
       if $('ul.events').length > 0
-        config = new Config()
-        cal = new Calendar()
-        cour = new Courses()
-
-        config.setup()
-        cal.get_calendar()
-        cour.query_courses()
-        #cour.query_assignments(1096567) #1096492)
-
+        startup()
         clearInterval checkIfAssideHasLoaded
       undefined
     , 50)
