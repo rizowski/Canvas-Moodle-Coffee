@@ -16,6 +16,9 @@
             "js":[
                 "jquery.min.js", 
                 "jquery-ui.min.js",
+                "underscore-min.js",
+                "moment.min.js",
+                "clndr-1.0.7.min.js",
                 "contentscript.js"
             ]
         }
