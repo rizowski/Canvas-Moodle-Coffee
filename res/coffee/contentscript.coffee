@@ -9,21 +9,16 @@ $(document).ready ->
 
   getcanvaskey = () =>
     chrome.storage.local.get 'canvaskey', (item) ->
-      setkey(item.canvaskey)
+      setkey item.canvaskey 
       
 
   $.ajaxSetup
         cache: true
-        # for the mean time, this is commented out due to problems with XSS the calendar
-        # headers: { 
-        #     "Authorization" : "Bearer " + canvaskey,
-        #     "Access-Control-Allow-Origin" : "*"
-        # }
-        # dataType : "json"
-        # dataFilter : (data, type) ->
-        #   console.log type
-        #   JSON.parse(data) if type == "json"
-        
+        headers: { 
+            "Authorization" : "Bearer #{canvaskey}",
+            "Access-Control-Allow-Origin" : "*"
+        }
+        dataType : "json"
 
   class Tools
 
@@ -111,9 +106,9 @@ $(document).ready ->
               <img id='assignload' style='display: block; margin-left: auto; margin-right: auto' src='images/ajax-reload-animated.gif'/>
               <table id='assignment-table' style='display: none;'>
                 <thead>
-                  <th>Date</th>
+                  <th>Due Date</th>
                   <th>Name</th>
-                  <th>Worth</th>
+                  <th>Pts. Worth</th>
                 </thead>
                 <tbody id='assign-t-body'></tbody>
               </table>
@@ -170,17 +165,10 @@ $(document).ready ->
 
   class Courses extends CanvasPlugin
 
-    current_courses = []
-    all_assignments : []
+    current_courses = null
+    all_assignments : null
     hit_counter = 0
     error_hit_counter = 0
-
-    assignment_sort: (obj1, obj2) ->
-      if not obj1
-        return -1
-      if not obj2
-        return -1
-      
 
     constructor : () ->
       @current_courses = []
@@ -188,59 +176,54 @@ $(document).ready ->
       @hit_counter = 0
       @error_hit_counter = 0
 
+    assignment_sort: (obj1, obj2) ->
+      if not obj1
+        return -1
+      if not obj2
+        return -1
+
     query_courses : () ->
       return $.ajax
         type: 'GET'
         crossDomain: true
         url: @course_apiurl
-        headers: { 
-                "Authorization" : "Bearer #{canvaskey}",
-                "Access-Control-Allow-Origin" : "*"
-            }
-            dataType : "json"
-            # dataFilter : (data, type) ->
-            #   console.log type
-            #   JSON.parse(data) if type == "json"
-            statusCode: {
-              401 : () ->
-                console.log 'Course not visible'
-              404 : () ->
-                console.log 'Page not found'
-              500 : () ->
-                console.log 'Server error'
-            }
-            success: (data) =>
-              @success_course(data)
-              undefined
-            complete: (xhr, status) =>
-              $('#courseload').hide()
+        headers: 
+          "Authorization" : "Bearer #{canvaskey}",
+          "Access-Control-Allow-Origin" : "*"
+        statusCode: 
+          401 : () ->
+            console.log 'Course not visible'
+          404 : () ->
+            console.log 'Page not found'
+          500 : () ->
+            console.log 'Server error'
+        success: (data) =>
+          @success_course(data)
+          undefined
+        complete: (xhr, status) =>
+          $('#courseload').hide()
 
     query_assignments : (_courseId) ->
       return $.ajax
         type: 'GET'
         crossDomain: true
         url: @assignments_apiurl(_courseId)
-        headers: {
+        headers:
           "Authorization" : "Bearer #{canvaskey}",
           "Access-Control-Allow-Origin" : "*"
-        }
-        dataType: 'json'
-        statusCode: {
-              401 : () ->
-                console.log 'Course not visible'
-              404 : () ->
-                console.log 'Page not found'
-              500 : () ->
-                console.log 'Server error'
-            }
+        statusCode:
+          401 : () ->
+            console.log 'Assignment not visible'
+          404 : () ->
+            console.log 'Page not found'
+          500 : () ->
+            console.log 'Server error'
         success: (data) =>
           @hit_counter++
           @success_assignment(data)
         error: (xhr, status, error) =>
-          console.log "QueryAssignments: #{status}, #{error}"
           @error_hit_counter++
         complete: (xhr, status) =>
-          console.log status
           $('#assignload').hide()
           
 
@@ -262,7 +245,10 @@ $(document).ready ->
             assignment.submission = true
             assignment.points_earned = item.submission.current_score
             assignment.grade = item.submission.grade
-          @all_assignments.push assignment
+          added = $.grep @all_assignments, (assign) ->
+            assign.id == assignment.id
+          if added.length <= 0
+            @all_assignments.push assignment
       counter = @hit_counter + @error_hit_counter
       if counter = @current_courses.length
         @get_assignments()
@@ -318,7 +304,7 @@ $(document).ready ->
       table.css('width', '100%')
 
       table.fadeIn 500
-      console.log 'grade load'
+      #console.log 'grade load'
 
     get_assignments: () ->
       final_string = ""
@@ -327,6 +313,7 @@ $(document).ready ->
         @all_assignments.sort (a, b) ->
           a.due_date - b.due_date
         seventh_day = moment().add('days', 7)
+        
         for assignment in @all_assignments
           if assignment.due_date <= seventh_day
             assignment_link = @tools.format_link(assignment.url, assignment.name)
@@ -349,7 +336,6 @@ $(document).ready ->
         assign_date.css 'text-align', 'center'
 
         assign_name.css 'width', '60%'
-        # assign_name.css 'width', '60%'
 
         assign_points.css 'width', '20%'
         assign_points.css 'text-align', 'center'
@@ -359,11 +345,8 @@ $(document).ready ->
         table.css('margin','0px')
         table.css('width', '100%')
         table.fadeIn 500
-      else
-        summary.html final_string
 
       summary.fadeIn 500
-      console.log 'assignments load'
   
   startup = () =>
     config = new Config()
@@ -381,6 +364,7 @@ $(document).ready ->
       $('.courses').hide()
       $('.assignments').hide()
       $('#notice-container').fadeIn 500
+
   ( ->
     checkIfAssideHasLoaded = setInterval( ->
       if $('ul.events').length > 0
