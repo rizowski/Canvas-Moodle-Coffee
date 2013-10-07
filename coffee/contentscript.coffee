@@ -2,7 +2,7 @@
 # sure what I could do with it. Once released improvements will be made.
 
 $(document).ready ->
-  canvaskey = ""
+  canvaskey = null
 
   setkey = (item) =>
     canvaskey = item
@@ -373,10 +373,10 @@ $(document).ready ->
     config.setup()
     cal.get_calendar()
     cour.query_courses()
-    if canvaskey == ""
+    if canvaskey == undefined || canvaskey == null || canvaskey == ""
       notice = $('#notice')
       url = $('.user_name>a').attr("href")
-      notice.html "<span style='color: red'>You are not authorized. Make sure you have an Auth-Token saved. You can create a token here: <a href='#{url}'>Create Token</a></span>"
+      notice.html "<span style='color: red'>Auth Token Required.<br/>Make sure you have an Auth-Token saved. You can create a token here: <a href='#{url}'>Create Token</a>. <br/><br/>Once you have created a token, go to the extension options page and save it there.</span>"
       $('.calendar').hide()
       $('.courses').hide()
       $('.assignments').hide()
