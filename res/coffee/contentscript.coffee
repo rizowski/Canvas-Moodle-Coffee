@@ -359,7 +359,19 @@ $(document).ready ->
     if canvaskey == undefined || canvaskey == null || canvaskey == ""
       notice = $('#notice')
       url = $('.user_name>a').attr("href")
-      notice.html "<span style='color: red'>Auth Token Required.<br/>Make sure you have an Auth-Token saved. You can create a token here: <a href='#{url}'>Create Token</a>. <br/><br/>Once you have created a token, go to the extension options page and save it there.</span>"
+      notice.html "<span style='color: red'>
+        Auth Token Required.
+        <br/>
+        Make sure you have an Auth-Token saved.</span>
+        <br/><br/>
+        <ol>
+          <li>Create a token here: <a href='#{url}'>Create Token</a></li>
+          <li>Scroll down to the bottom of the page and click \"New Access Token\"</li>
+          <li>Copy the token which will look like 1~iocGw2co</li>
+          <li>Open your <a href='chrome://extensions/'>extensions</a> page and find the options link under the Canvas to Moodle Plugin.</li>
+          <li>Paste the token in the specified location.</li>
+          <li>Enjoy!</li>
+        </ol>"
       $('.calendar').hide()
       $('.courses').hide()
       $('.assignments').hide()

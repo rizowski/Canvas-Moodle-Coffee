@@ -15,13 +15,13 @@ $(document).ready () ->
 saveKey = () ->
 	if keyfield.val()?
 		localKey = keyfield.val()
+		localKey = localKey.replace /\s+/g, ''
 	
 	mykeyobj[keylocation] = localKey
 
 	storage.set(mykeyobj)
 
 	storage.get(keylocation, (item) ->
-		console.log item
 		if item.canvaskey == localKey
 			noti.html('<span style=\'color: green\'>Key has been saved.</span>')
 		else
