@@ -120,10 +120,16 @@ $(document).ready ->
       notice.css('border', '1px solid #bbb')
       notice.css('padding', '10px')
 
+    events : () ->
+      $('.assignments>h2').click () ->
+        $('.assignment-summary-div').toggle()
+      $('.courses>h2').click () ->
+        $('.course-summary-div').toggle()
     setup : () ->
       @remove()
       @add_divs()
       @prettyfy()
+      @events()
 
   class Calendar extends CanvasPlugin
     constructor : () ->
@@ -169,12 +175,14 @@ $(document).ready ->
     all_assignments : null
     hit_counter = 0
     error_hit_counter = 0
+    HTML_RED = null
 
     constructor : () ->
       @current_courses = []
       @all_assignments = []
       @hit_counter = 0
       @error_hit_counter = 0
+      @HTML_RED = "#FF9999"
 
     assignment_sort: (obj1, obj2) ->
       if not obj1
@@ -282,22 +290,33 @@ $(document).ready ->
         @query_assignments(course.id)
         course_link = @tools.format_link(course.url, course.name)
         course_grade = ""
-        if course.start_date >= moment()
-          if course.current_grade
-            course_grade = "#{course.current_grade}"
-          else if course.current_score
-            course_grade = "#{course.current_score}"
-          else if course.final_grade
-            course_grade = "#{course.final_grade}"
-          else if course.final_score
-            course_grade = "#{course.final_score}"
-          else
-            course_grade = "NA"
-        final_string += @tools.table_row ["[#{course.code}]", course_link, "#{course_grade}"]
+        if course.current_grade
+          course_grade = "#{course.current_grade}"
+        else if course.current_score
+          course_grade = "#{course.current_score}"
+        else if course.final_grade
+          course_grade = "#{course.final_grade}"
+        else if course.final_score
+          course_grade = "#{course.final_score}"
+        else
+          course_grade = "NA"
+        final_string += "<tr><td class='class-code'>[#{course.code}]</td><td class='class-link'>#{course_link}</td><td class='class-grade'>#{course_grade}</td></tr>"
       table = $('#course-table')
       tbody = $('#course-t-body')
 
       tbody.html final_string
+
+      code = $('.class-code')
+      link = $('.class-link')
+      grade = $('.class-grade')
+
+      code.css 'width', '20%'
+      code.css 'text-align', 'center'
+
+      link.css 'width', '60%'
+
+      grade.css 'width', '20%'
+      grade.css 'text-align', 'right'
 
       table.css('margin', '0px auto')
       table.css('margin','0px')
@@ -312,17 +331,23 @@ $(document).ready ->
         @all_assignments.sort (a, b) ->
           a.due_date - b.due_date
         seventh_day = moment().add('days', 7)
-        
+        today = moment()
         for assignment in @all_assignments
           if assignment.due_date <= seventh_day
-            assignment_link = @tools.format_link(assignment.url, assignment.name)
-            turned_in = (assignment.submission?)
-            date = null
-            if(assignment.due_date == moment())
-              date = assignment.due_date.format("[Today at] h:m a ")
-            else
-              date = assignment.due_date.format("dd DD")
-            final_string += "<tr><td class='assign-date'>#{date}</td><td class='assign-name'>#{assignment_link}</td><td class='assign-points'>#{assignment.points_possible}</td></tr>"
+            if not assignment.submission
+              assignment_link = @tools.format_link(assignment.url, assignment.name)
+              date = null
+              bg_color = null
+                
+              if assignment.due_date == today 
+                date = assignment.due_date.format("[Today at] h:m a")
+              else if assignment.due_date < today
+                bg_color = "background: #{@HTML_RED};"
+                date = assignment.due_date.format("dd DD h:m a")
+              else
+                date = assignment.due_date.format("dd DD h:m a")#.format("dd DD")
+
+              final_string += "<tr class='assign-row' style='#{bg_color}'><td class='assign-date'>#{date}</td><td class='assign-name'>#{assignment_link}</td><td class='assign-points'>#{assignment.points_possible}</td></tr>"
         tbody = $('#assign-t-body')
 
         tbody.html final_string
@@ -330,6 +355,9 @@ $(document).ready ->
         assign_date = $('.assign-date')
         assign_name = $('.assign-name')
         assign_points = $('.assign-points')
+        row = $('.assign-row')
+        row.click () =>
+          
 
         assign_date.css 'width', '20%'
         assign_date.css 'text-align', 'center'

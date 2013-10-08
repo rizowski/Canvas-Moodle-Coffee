@@ -6,11 +6,11 @@ storage = chrome.storage.local
 mykeyobj = {}
 
 $(document).ready () ->
-	storage.get(keylocation, (item) ->
+	storage.get keylocation, (item) ->
 		localKey = item.canvaskey
 		keyfield.val localKey
 		null
-		)
+		
 
 saveKey = () ->
 	if keyfield.val()?
@@ -21,12 +21,12 @@ saveKey = () ->
 
 	storage.set(mykeyobj)
 
-	storage.get(keylocation, (item) ->
+	storage.get keylocation, (item) ->
 		if item.canvaskey == localKey
 			noti.html('<span style=\'color: green\'>Key has been saved.</span>')
 		else
 			noti.html('<span style=\'color: red\'>Unable to save key.</span>')
-		)
+		
 
 keyfield.focusout saveKey
 $(document).keypress (e) ->
