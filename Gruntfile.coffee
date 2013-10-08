@@ -19,6 +19,7 @@ module.exports = (grunt) ->
 				files: {
 					'out/contentscript.js': 'res/coffee/contentscript.coffee'
 					'out/options.js': 'res/coffee/options.coffee'
+					'out/tracker.js': 'res/coffee/tracker.coffee'
 				}
 			}
 		}

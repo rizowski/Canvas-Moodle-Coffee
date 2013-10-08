@@ -293,7 +293,7 @@ $(document).ready ->
             course_grade = "#{course.final_score}"
           else
             course_grade = "NA"
-        final_string += @tools.table_row ["[#{course.code}]", course_link, "(#{course_grade})"]
+        final_string += @tools.table_row ["[#{course.code}]", course_link, "#{course_grade}"]
       table = $('#course-table')
       tbody = $('#course-t-body')
 
@@ -304,7 +304,6 @@ $(document).ready ->
       table.css('width', '100%')
 
       table.fadeIn 500
-      #console.log 'grade load'
 
     get_assignments: () ->
       final_string = ""
