@@ -334,7 +334,7 @@ $(document).ready ->
         @all_assignments.sort (a, b) ->
           a.due_date - b.due_date
         range = moment().add 'days', 7
-        if assignRange
+        if assignRange != undefined && assignRange != ""
           range = assignRange
           
         today = moment()

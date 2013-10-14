@@ -80,10 +80,11 @@ saveGrade = () ->
 
 saveAssignRange = () ->
   input = range.val().toLowerCase()
-  valid_range = /\d (days|weeks|months)/i.test input
-  if not valid_range
-  	notiMsg "Be sure to specify a number and then the measurement in time (3 days)", "error"
-  	return 
+  if input != ""
+	  valid_range = /\d (days|weeks|months)/i.test input
+	  if not valid_range
+	  	notiMsg "Be sure to specify a number and then the measurement in time (3 days)", "error"
+	  	return 
   assignRangeobj['assignRange'] = range.val()
   localRange = assignRangeobj.assignRange
 
