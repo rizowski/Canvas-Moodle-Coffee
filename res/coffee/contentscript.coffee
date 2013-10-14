@@ -16,8 +16,9 @@ $(document).ready ->
     if items.hasOwnProperty 'grades'
       grades = items.grades
     if items.hasOwnProperty 'assignRange'
-      input = items.assignRange.split ' '
-      assignRange = moment().add input[1], input[0]
+      if items.assignRange != ""
+        input = items.assignRange.split ' '
+        assignRange = moment().add input[1], input[0]
 
   getSyncSettings = () =>
     chrome.storage.sync.get ['colors','grades', 'assignRange'], (items) ->
@@ -334,7 +335,7 @@ $(document).ready ->
         @all_assignments.sort (a, b) ->
           a.due_date - b.due_date
         range = moment().add 'days', 7
-        if assignRange != undefined && assignRange != ""
+        if assignRange && assignRange != ""
           range = assignRange
           
         today = moment()
