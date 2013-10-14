@@ -3,22 +3,36 @@
 
 $(document).ready ->
   canvaskey = null
+  colors = false
+  grades = true
 
   setkey = (item) =>
     canvaskey = item
 
+  setKeys = (items) =>
+    if items.hasOwnProperty('colors')
+      colors = items.colors
+    if items.hasOwnProperty('grades')
+      grades = if items.grades == "1" then true else false
+
+  getSyncSettings = () =>
+    chrome.storage.sync.get ['colors','grades'], (items) ->
+      setKeys items
+
   getcanvaskey = () =>
     chrome.storage.local.get 'canvaskey', (item) ->
-      setkey item.canvaskey 
-      
+      setkey item.canvaskey
 
   $.ajaxSetup
         cache: true
-        headers: { 
-            "Authorization" : "Bearer #{canvaskey}",
-            "Access-Control-Allow-Origin" : "*"
-        }
         dataType : "json"
+        statusCode: 
+          401 : () ->
+            console.log 'Auth Error'
+          404 : () ->
+            console.log 'Page not found'
+          500 : () ->
+            console.log 'Server error'
 
   class Tools
 
@@ -82,7 +96,7 @@ $(document).ready ->
       $("aside#right-side").append "<div class='calendar'>
             <h2 style='display: none;'>Calendar</h2>
             <img id='calload' style='display: block; margin: 0 auto;' src='images/ajax-reload-animated.gif'/>
-            <div class='calendar-div' style='display: none;'>
+            <div id='calendar-div' class='calendar-div' style='display: none;'>
               
             </div></div>"
 
@@ -137,7 +151,7 @@ $(document).ready ->
     get_calendar : () ->
       loading = $('#calload')
       loading.show
-      calendar = $('.calendar-div')
+      calendar = $('#calendar-div')
       calendar.clndr()
       
       canvas_header = $('#header')
@@ -170,12 +184,12 @@ $(document).ready ->
       calendar.fadeIn 500
 
   class Courses extends CanvasPlugin
-
     current_courses = null
     all_assignments : null
     hit_counter = 0
     error_hit_counter = 0
     HTML_RED = null
+    # events = null
 
     constructor : () ->
       @current_courses = []
@@ -183,6 +197,7 @@ $(document).ready ->
       @hit_counter = 0
       @error_hit_counter = 0
       @HTML_RED = "#FF9999"
+      # @events = []
 
     assignment_sort: (obj1, obj2) ->
       if not obj1
@@ -193,18 +208,11 @@ $(document).ready ->
     query_courses : () ->
       return $.ajax
         type: 'GET'
-        crossDomain: true
         url: @course_apiurl
+        crossDomain: true
         headers: 
-          "Authorization" : "Bearer #{canvaskey}",
-          "Access-Control-Allow-Origin" : "*"
-        statusCode: 
-          401 : () ->
-            console.log 'Course not visible'
-          404 : () ->
-            console.log 'Page not found'
-          500 : () ->
-            console.log 'Server error'
+            "Authorization" : "Bearer #{canvaskey}"
+            "Access-Control-Allow-Origin" : "*"
         success: (data) =>
           @success_course(data)
           undefined
@@ -214,18 +222,11 @@ $(document).ready ->
     query_assignments : (_courseId) ->
       return $.ajax
         type: 'GET'
-        crossDomain: true
         url: @assignments_apiurl(_courseId)
-        headers:
-          "Authorization" : "Bearer #{canvaskey}",
-          "Access-Control-Allow-Origin" : "*"
-        statusCode:
-          401 : () ->
-            console.log 'Assignment not visible'
-          404 : () ->
-            console.log 'Page not found'
-          500 : () ->
-            console.log 'Server error'
+        crossDomain: true
+        headers: 
+            "Authorization" : "Bearer #{canvaskey}"
+            "Access-Control-Allow-Origin" : "*"
         success: (data) =>
           @hit_counter++
           @success_assignment(data)
@@ -259,7 +260,7 @@ $(document).ready ->
             @all_assignments.push assignment
       counter = @hit_counter + @error_hit_counter
       if counter = @current_courses.length
-        @get_assignments()
+        @print_assignments()
 
     success_course: (response) ->
       arr = []
@@ -282,25 +283,21 @@ $(document).ready ->
           @current_courses.push course
           arr.push course
           @query_assignments(course.id)
-      @get_courses(arr)
+      @print_courses(arr)
 
-    get_courses: (courses) ->
+    print_courses: (courses) ->
       final_string = ""
       for course in courses
         @query_assignments(course.id)
         course_link = @tools.format_link(course.url, course.name)
         course_grade = ""
-        if course.current_grade
+        if course.current_grade && grades
           course_grade = "#{course.current_grade}"
         else if course.current_score
           course_grade = "#{course.current_score}"
-        else if course.final_grade
-          course_grade = "#{course.final_grade}"
-        else if course.final_score
-          course_grade = "#{course.final_score}"
         else
-          course_grade = "NA"
-        final_string += "<tr><td class='class-code'>[#{course.code}]</td><td class='class-link'>#{course_link}</td><td class='class-grade'>#{course_grade}</td></tr>"
+          course_grade = ""
+        final_string += "<tr id='#{course.id}' ><td class='class-code'>[#{course.code}]</td><td class='class-link'>#{course_link}</td><td class='class-grade'>#{course_grade}</td></tr>"
       table = $('#course-table')
       tbody = $('#course-t-body')
 
@@ -316,39 +313,48 @@ $(document).ready ->
       link.css 'width', '60%'
 
       grade.css 'width', '20%'
-      grade.css 'text-align', 'right'
+      grade.css 'text-align', 'center'
 
-      table.css('margin', '0px auto')
-      table.css('margin','0px')
-      table.css('width', '100%')
+      table.css 'margin', '0px auto'
+      table.css 'margin','0px'
+      table.css 'width', '100%'
 
       table.fadeIn 500
 
-    get_assignments: () ->
+    print_assignments: () ->
       final_string = ""
       summary = $('.assignment-summary-div')
       if @all_assignments.length > 0
         @all_assignments.sort (a, b) ->
           a.due_date - b.due_date
-        seventh_day = moment().add('days', 7)
+        seventh_day = moment().add 'days', 7
         today = moment()
         for assignment in @all_assignments
           if assignment.due_date <= seventh_day
             if not assignment.submission
               assignment_link = @tools.format_link(assignment.url, assignment.name)
               date = null
-              bg_color = null
-                
-              if assignment.due_date == today 
-                date = assignment.due_date.format("[Today at] h:m a")
-              else if assignment.due_date < today
-                bg_color = "background: #{@HTML_RED};"
-                date = assignment.due_date.format("dd DD h:m a")
-              else
-                date = assignment.due_date.format("dd DD h:m a")#.format("dd DD")
+              style = ""
 
-              final_string += "<tr class='assign-row' style='#{bg_color}'><td class='assign-date'>#{date}</td><td class='assign-name'>#{assignment_link}</td><td class='assign-points'>#{assignment.points_possible}</td></tr>"
+              # @events.push {date: assignment.due_date.format('YYYY-DD-MM'), title: assignment.name, url: assignment.url}
+              
+              if assignment.due_date.get('date') == today.get('date')
+                if colors
+                  style = "background: #FCDC3B;"
+                date = assignment.due_date.format "[Today at] h:m a"
+              else if assignment.due_date < today
+                if colors
+                  style += "background: #{@HTML_RED};"
+                date = assignment.due_date.format "dd DD h:m a"
+              else
+                # if colors
+                #   style += "background: ;"
+                date = assignment.due_date.format "dd DD"
+
+              final_string += "<tr id='#{assignment.id}' class='assign-row' style='#{style}'><td class='assign-date'>#{date}</td><td class='assign-name'>#{assignment_link}</td><td class='assign-points'>#{assignment.points_possible}</td></tr>"
         tbody = $('#assign-t-body')
+        # clndr = $('#calendar-div').clndr();
+        # clndr.setEvents(@events);
 
         tbody.html final_string
 
@@ -356,8 +362,6 @@ $(document).ready ->
         assign_name = $('.assign-name')
         assign_points = $('.assign-points')
         row = $('.assign-row')
-        row.click () =>
-          
 
         assign_date.css 'width', '20%'
         assign_date.css 'text-align', 'center'
@@ -368,13 +372,13 @@ $(document).ready ->
         assign_points.css 'text-align', 'center'
 
         table = $('#assignment-table')
-        table.css('margin', '0px auto')
-        table.css('margin','0px')
-        table.css('width', '100%')
+        table.css 'margin', '0px auto'
+        table.css 'margin','0px'
+        table.css 'width', '100%'
         table.fadeIn 500
 
       summary.fadeIn 500
-  
+
   startup = () =>
     config = new Config()
     cal = new Calendar()
@@ -412,4 +416,5 @@ $(document).ready ->
       undefined
     , 50)
     getcanvaskey()
+    getSyncSettings()
   )()
