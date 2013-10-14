@@ -1,13 +1,15 @@
 # set this up on forms instead of individual fields
 localKey = ""
 localColors = false
+localRange = ""
 
 keyLocation = 'canvaskey'
-keyLocations = ['colors', 'grades']
+keyLocations = ['colors', 'grades', 'assignRange']
 
 keyfield = $('#canvaskey')
 colors = $('#colors')
 grades = $('#grades')
+range = $('#range')
 noti = $('#notification')
 
 localStorage = chrome.storage.local
@@ -16,6 +18,7 @@ syncStorage = chrome.storage.sync
 mykeyobj = {}
 colorsobj = {}
 gradesobj = {}
+assignRangeobj = {}
 
 $(document).ready () ->
   chrome.storage.local.get keyLocation, (item) ->
@@ -25,7 +28,14 @@ $(document).ready () ->
   chrome.storage.sync.get keyLocations, (items) ->
     colors.prop 'checked', items.colors
     grades.val items.grades
+    range.val items.assignRange
 
+notiMsg = (msg, type) ->
+  type ?= "ok"
+  if type == "ok"
+    noti.html("<span style=\'color: green\'>#{msg}</span>")
+  else
+    noti.html("<span style=\'color: red\'>#{msg}</span>")
 
 saveKey = () ->
   if keyfield.val()?
@@ -38,9 +48,9 @@ saveKey = () ->
 
   chrome.storage.local.get keyLocation, (item) ->
     if item.canvaskey == localKey
-      noti.html('<span style=\'color: green\'>Settings Saved.</span>')
+    	notiMsg "Settings Saved"
     else
-      noti.html('<span style=\'color: red\'>Unable to save key.</span>')
+    	notiMsg "Unable to save key", "error"
 
 saveColors = () ->
   colorsobj['colors'] = colors.prop 'checked'
@@ -51,9 +61,9 @@ saveColors = () ->
 
   chrome.storage.sync.get 'colors', (item) ->
     if item.colors == localColors
-      noti.html('<span style=\'color: green\'>Settings Saved.</span>')
+      notiMsg "Settings Saved"
     else
-      noti.html('<span style=\'color: red\'>Unable to save Colors.</span>')
+      notiMsg "Unable to save Colors", "error"
 
 saveGrade = () ->
   gradesobj['grades'] = grades.val()
@@ -64,14 +74,36 @@ saveGrade = () ->
 
   syncStorage.get 'grades', (item) ->
     if item.grades == localGrades
-      noti.html('<span style=\'color: green\'>Settings Saved.</span>')
+      notiMsg "Settings Saved"
     else
-      noti.html('<span style=\'color: red\'>Unable to save Grades.</span>')
-    
+      notiMsg 'Unable to save Grades.', "error"
+
+saveAssignRange = () ->
+  input = range.val().toLowerCase()
+  valid_range = /\d (days|weeks|months)/i.test input
+  if not valid_range
+  	notiMsg "Be sure to specify a number and then the measurement in time (3 days)", "error"
+  	return 
+  assignRangeobj['assignRange'] = range.val()
+  localRange = assignRangeobj.assignRange
+
+  syncStorage.set assignRangeobj
+
+  syncStorage.get 'assignRange', (item) ->
+    if item.assignRange == localRange
+      notiMsg "Settings Saved"
+    else
+      notiMsg "Unable to save Range", "error"
+
+saveLate = () ->
+
 keyfield.focusout saveKey
 keyfield.keyup saveKey
 colors.change saveColors
 grades.change saveGrade
+
+range.focusout saveAssignRange
+range.keyup saveAssignRange
 
 $(document).keypress (e) ->
   if e.which == 13

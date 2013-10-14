@@ -5,15 +5,36 @@
 <body>
 	<div class="content">
 		<fieldset>
-			<legend>Options</legend>
+			<legend>Canvas to Moodle Options</legend>
 			<div id="notification"></div>
-			Canvas Key: <input id="canvaskey" type="password"/><br/>
-      Show Colors: <input id="colors" type="checkbox"/><br/>
-      Show Grades or Percents:
-      <select id="grades">
-        <option value="1" selected="true">Grade</option>
-        <option value="2">Percent</option>
-      </select>
+      <fieldset>
+        <legend>Required</legend>
+        Canvas Key: <input id="canvaskey" type="password"/><br/>
+      </fieldset>
+      <!-- <fieldset>
+        <legend>Global Options</legend>
+        
+      </fieldset> -->
+			<div>
+           <fieldset>
+             <legend>Courses</legend>
+              Show Grades/Percents:
+              <select id="grades">
+                <option value="1" selected="true">Grade</option>
+                <option value="2">Percent</option>
+                <option value="3">Both</option>
+              </select><br/>
+           </fieldset>
+      </div>
+      <div>
+        <fieldset>
+          <legend>Assignments</legend>
+          Show Colors: <input id="colors" type="checkbox"/><br/>
+          Assignment Range: <input id="range" type="text" placeholder="Default 7 Days"/><br/>You can specify anything in words ex (7 days, 1 week, 4 months)
+          <br/>
+          <!-- Show Late Assignments: <input id="late" type="checkbox"/><br/> -->
+        </fieldset>
+      </div>
 		</fieldset>
 	</div>
 </body>

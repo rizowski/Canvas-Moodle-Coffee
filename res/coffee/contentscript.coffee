@@ -4,19 +4,23 @@
 $(document).ready ->
   canvaskey = null
   colors = false
-  grades = true
+  grades = null
+  assignRange = null
 
   setkey = (item) =>
     canvaskey = item
 
   setKeys = (items) =>
-    if items.hasOwnProperty('colors')
+    if items.hasOwnProperty 'colors'
       colors = items.colors
-    if items.hasOwnProperty('grades')
-      grades = if items.grades == "1" then true else false
+    if items.hasOwnProperty 'grades'
+      grades = items.grades
+    if items.hasOwnProperty 'assignRange'
+      input = items.assignRange.split ' '
+      assignRange = moment().add input[1], input[0]
 
   getSyncSettings = () =>
-    chrome.storage.sync.get ['colors','grades'], (items) ->
+    chrome.storage.sync.get ['colors','grades', 'assignRange'], (items) ->
       setKeys items
 
   getcanvaskey = () =>
@@ -291,10 +295,12 @@ $(document).ready ->
         @query_assignments(course.id)
         course_link = @tools.format_link(course.url, course.name)
         course_grade = ""
-        if course.current_grade && grades
+        if course.current_grade && grades == "1"
           course_grade = "#{course.current_grade}"
-        else if course.current_score
+        else if course.current_score && grades == "2"
           course_grade = "#{course.current_score}"
+        else if course.current_grade && course.current_score && grades == "3"
+          course_grade = "#{course.current_grade} (#{course.current_score})"
         else
           course_grade = ""
         final_string += "<tr id='#{course.id}' ><td class='class-code'>[#{course.code}]</td><td class='class-link'>#{course_link}</td><td class='class-grade'>#{course_grade}</td></tr>"
@@ -327,10 +333,13 @@ $(document).ready ->
       if @all_assignments.length > 0
         @all_assignments.sort (a, b) ->
           a.due_date - b.due_date
-        seventh_day = moment().add 'days', 7
+        range = moment().add 'days', 7
+        if assignRange
+          range = assignRange
+          
         today = moment()
         for assignment in @all_assignments
-          if assignment.due_date <= seventh_day
+          if assignment.due_date <= range
             if not assignment.submission
               assignment_link = @tools.format_link(assignment.url, assignment.name)
               date = null
