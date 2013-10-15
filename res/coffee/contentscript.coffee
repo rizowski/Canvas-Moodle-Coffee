@@ -6,6 +6,8 @@ $(document).ready ->
   colors = false
   grades = null
   assignRange = null
+  sync = chrome.storage.sync
+  local = chrome.storage.local
 
   setkey = (item) =>
     canvaskey = item
@@ -21,12 +23,15 @@ $(document).ready ->
         assignRange = moment().add input[1], input[0]
 
   getSyncSettings = () =>
-    chrome.storage.sync.get ['colors','grades', 'assignRange'], (items) ->
+    sync.get ['colors','grades', 'assignRange'], (items) ->
       setKeys items
 
   getcanvaskey = () =>
-    chrome.storage.local.get 'canvaskey', (item) ->
+    local.get 'canvaskey', (item) ->
       setkey item.canvaskey
+
+  saveSettings = (item) =>
+    sync.set item
 
   $.ajaxSetup
         cache: true
@@ -296,14 +301,33 @@ $(document).ready ->
         @query_assignments(course.id)
         course_link = @tools.format_link(course.url, course.name)
         course_grade = ""
-        if course.current_grade && grades == "1"
-          course_grade = "#{course.current_grade}"
-        else if course.current_score && grades == "2"
-          course_grade = "#{course.current_score}"
-        else if course.current_grade && course.current_score && grades == "3"
-          course_grade = "#{course.current_grade} (#{course.current_score})"
-        else
-          course_grade = ""
+        if grades == "1"
+          if course.current_grade
+            course_grade = "#{course.current_grade}"
+          else if course.current_score
+            course_grade = "#{course.current_score}"
+          else if course.current_grade && course.current_score
+            course_grade = "#{course.current_grade} (#{course.current_score})"
+          else
+            course_grade = ""
+        else if grades == "2"
+          if course.current_score
+            course_grade = "#{course.current_score}"
+          else if course.current_grade
+            course_grade = "#{course.current_grade}"
+          else if course.current_grade && course.current_score
+            course_grade = "#{course.current_grade} (#{course.current_score})"
+          else
+            course_grade = ""
+        else if grades == "3"
+          if course.current_grade && course.current_score
+            course_grade = "#{course.current_grade} (#{course.current_score})"
+          else if course.current_grade
+            course_grade = "#{course.current_grade}"
+          else if course.current_score
+            course_grade = "#{course.current_score}"
+          else
+            course_grade = ""
         final_string += "<tr id='#{course.id}' ><td class='class-code'>[#{course.code}]</td><td class='class-link'>#{course_link}</td><td class='class-grade'>#{course_grade}</td></tr>"
       table = $('#course-table')
       tbody = $('#course-t-body')
@@ -356,9 +380,9 @@ $(document).ready ->
                 if colors
                   style += "background: #{@HTML_RED};"
                 date = assignment.due_date.format "dd DD h:m a"
+              else if assignment.due_date.get('month') != today.get('month')
+                date = assignment.due_date.format "MMM DD"
               else
-                # if colors
-                #   style += "background: ;"
                 date = assignment.due_date.format "dd DD"
 
               final_string += "<tr id='#{assignment.id}' class='assign-row' style='#{style}'><td class='assign-date'>#{date}</td><td class='assign-name'>#{assignment_link}</td><td class='assign-points'>#{assignment.points_possible}</td></tr>"
