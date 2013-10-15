@@ -2,15 +2,17 @@
 localKey = ""
 localColors = false
 localRange = ""
+localLate = true
 
 keyLocation = 'canvaskey'
-keyLocations = ['colors', 'grades', 'assignRange']
+keyLocations = ['colors', 'grades', 'assignRange', 'late']
 
 keyfield = $('#canvaskey')
 colors = $('#colors')
 grades = $('#grades')
 range = $('#range')
 noti = $('#notification')
+late = $('#late')
 
 localStorage = chrome.storage.local
 syncStorage = chrome.storage.sync
@@ -19,6 +21,7 @@ mykeyobj = {}
 colorsobj = {}
 gradesobj = {}
 assignRangeobj = {}
+lateobj = {}
 
 $(document).ready () ->
   chrome.storage.local.get keyLocation, (item) ->
@@ -29,6 +32,7 @@ $(document).ready () ->
     colors.prop 'checked', items.colors
     grades.val items.grades
     range.val items.assignRange
+    late.prop 'checked', items.late
 
 notiMsg = (msg, type) ->
   type ?= "ok"
@@ -48,9 +52,9 @@ saveKey = () ->
 
   chrome.storage.local.get keyLocation, (item) ->
     if item.canvaskey == localKey
-    	notiMsg "Settings Saved"
+      notiMsg "Canvas Key Settings Saved"
     else
-    	notiMsg "Unable to save key", "error"
+      notiMsg "Unable to save key", "error"
 
 saveColors = () ->
   colorsobj['colors'] = colors.prop 'checked'
@@ -61,7 +65,7 @@ saveColors = () ->
 
   chrome.storage.sync.get 'colors', (item) ->
     if item.colors == localColors
-      notiMsg "Settings Saved"
+      notiMsg "Color Settings Saved"
     else
       notiMsg "Unable to save Colors", "error"
 
@@ -74,17 +78,17 @@ saveGrade = () ->
 
   syncStorage.get 'grades', (item) ->
     if item.grades == localGrades
-      notiMsg "Settings Saved"
+      notiMsg "Grade Settings Saved"
     else
       notiMsg 'Unable to save Grades.', "error"
 
 saveAssignRange = () ->
   input = range.val().toLowerCase()
   if input != ""
-	  valid_range = /\d (days|weeks|months)/i.test input
-	  if not valid_range
-	  	notiMsg "Be sure to specify a number and then the measurement in time (3 days)", "error"
-	  	return 
+    valid_range = /\d (days|weeks|months)/i.test input
+    if not valid_range
+      notiMsg "Be sure to specify a number and then the measurement in time (3 days)", "error"
+      return 
   assignRangeobj['assignRange'] = range.val()
   localRange = assignRangeobj.assignRange
 
@@ -92,11 +96,22 @@ saveAssignRange = () ->
 
   syncStorage.get 'assignRange', (item) ->
     if item.assignRange == localRange
-      notiMsg "Settings Saved"
+      notiMsg "Assignment Range Saved"
     else
       notiMsg "Unable to save Range", "error"
 
 saveLate = () ->
+  lateobj['late'] = late.prop 'checked'
+
+  localLate = lateobj['late']
+
+  syncStorage.set lateobj
+
+  chrome.storage.sync.get 'late', (item) ->
+    if item.late == localLate
+      notiMsg "Late Assignments Saved"
+    else
+      notiMsg "Unable to save Late assignment setting", "error"
 
 keyfield.focusout saveKey
 keyfield.keyup saveKey
@@ -105,6 +120,8 @@ grades.change saveGrade
 
 range.focusout saveAssignRange
 range.keyup saveAssignRange
+
+late.change saveLate
 
 $(document).keypress (e) ->
   if e.which == 13

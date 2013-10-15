@@ -6,6 +6,7 @@ $(document).ready ->
   colors = false
   grades = null
   assignRange = null
+  display_late = true
   sync = chrome.storage.sync
   local = chrome.storage.local
 
@@ -21,9 +22,11 @@ $(document).ready ->
       if items.assignRange != ""
         input = items.assignRange.split ' '
         assignRange = moment().add input[1], input[0]
+    if items.hasOwnProperty 'late'
+      display_late = items.late
 
   getSyncSettings = () =>
-    sync.get ['colors','grades', 'assignRange'], (items) ->
+    sync.get ['colors','grades', 'assignRange', 'late'], (items) ->
       setKeys items
 
   getcanvaskey = () =>
@@ -376,7 +379,7 @@ $(document).ready ->
                 if colors
                   style = "background: #FCDC3B;"
                 date = assignment.due_date.format "[Today at] h:m a"
-              else if assignment.due_date < today
+              else if assignment.due_date < today && display_late
                 if colors
                   style += "background: #{@HTML_RED};"
                 date = assignment.due_date.format "dd DD h:m a"
