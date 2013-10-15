@@ -3,7 +3,7 @@
 
 $(document).ready ->
   canvaskey = null
-  colors = false
+  colors = true
   grades = null
   assignRange = null
   display_late = true
@@ -329,6 +329,15 @@ $(document).ready ->
             course_grade = "#{course.current_grade}"
           else if course.current_score
             course_grade = "#{course.current_score}"
+          else
+            course_grade = ""
+        else
+          if course.current_grade
+            course_grade = "#{course.current_grade}"
+          else if course.current_score
+            course_grade = "#{course.current_score}"
+          else if course.current_grade && course.current_score
+            course_grade = "#{course.current_grade} (#{course.current_score})"
           else
             course_grade = ""
         final_string += "<tr id='#{course.id}' ><td class='class-code'>[#{course.code}]</td><td class='class-link'>#{course_link}</td><td class='class-grade'>#{course_grade}</td></tr>"
