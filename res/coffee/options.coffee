@@ -1,6 +1,6 @@
 # set this up on forms instead of individual fields
 localKey = ""
-localColors = false
+localColors = true
 localRange = ""
 localLate = true
 
