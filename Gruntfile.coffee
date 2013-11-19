@@ -17,9 +17,18 @@ module.exports = (grunt) ->
 			}
 			compile: {
 				files: {
-					'out/contentscript.js': 'res/coffee/contentscript.coffee'
+					'out/contentscript.js': 'res/coffee/contentscriptv2.coffee'
 					'out/options.js': 'res/coffee/options.coffee'
 					'out/tracker.js': 'res/coffee/tracker.coffee'
+				}
+			}
+		}
+
+		compass:{
+			dist:{
+				options:{
+					sassDir: 'res/style/'
+					cssDir: 'out/'
 				}
 			}
 		}
@@ -45,6 +54,7 @@ module.exports = (grunt) ->
 	# Load uglify
 	grunt.loadNpmTasks 'grunt-contrib-uglify'
 	grunt.loadNpmTasks 'grunt-contrib-coffee'
+	grunt.loadNpmTasks 'grunt-contrib-compass'
 	grunt.loadNpmTasks 'grunt-contrib-copy'
 	grunt.loadNpmTasks 'grunt-contrib-clean'
-	grunt.registerTask 'default', ['clean', 'uglify', 'coffee', 'copy']
+	grunt.registerTask 'default', ['clean', 'uglify', 'compass', 'coffee', 'copy']

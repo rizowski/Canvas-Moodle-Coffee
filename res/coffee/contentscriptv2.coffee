@@ -9,14 +9,15 @@ class CanvasExtension
     }
   }
 
-  tools = (new Tools())
-  sync = chrome.storage.sync
-  local = chrome.storage.local
+  tools = null
+  sync : chrome.storage.sync
+  local : chrome.storage.local
 
   allAssignments : []
   allCourses : []
 
   constructor : () ->
+    @tools = new Tools()
 
   $.ajaxSetup
     cache: true
@@ -31,13 +32,13 @@ class CanvasExtension
       500 : () ->
         console.log 'Server error'
     headers: 
-      "Authorization" : "Bearer #{@settings.canvaskey}"
+      "Authorization" : "Bearer #{settings.canvasKey}"
       "Access-Control-Allow-Origin" : "*"
 
   setKey : (item) ->
-    settings.canvasKey = item
+    @settings.canvasKey = item
 
-  # This needs to be modified to reflect settings changes top
+  # TODO This needs to be modified to reflect settings changes top
   setKeys : (items) ->
     if items.hasOwnProperty 'canvasKey'
       console.log('TODO set key')
@@ -55,11 +56,11 @@ class CanvasExtension
       display_late = items.late
 
   getSyncSettings : () ->
-    sync.get ['settings'], (settings) ->
-      setKeys settings
+    @sync.get ['settings'], (settings) ->
+      @setKeys settings
 
   saveSettings : (item) ->
-    sync.set item
+    @sync.set item
 
 class Tools
   constructor : () ->
@@ -175,22 +176,22 @@ class Display
     $("aside#right-side").children('ul').remove()
 
   addDivs : () ->
-    $("aside#right-side").append "<div id='notice-container' style='display: none;'>
+    $("aside#right-side").append "<div id='notice-container' class='notice-container'>
       <h2>Canvas to Moodle Notice</h2>
-      <div id='notice'></div>
+      <div id='notice' class='notice'></div>
       </div>"
 
     $("aside#right-side").append "<div class='calendar'>
       <h2 style='display: none;'>Calendar</h2>
       <img id='calload' style='display: block; margin: 0 auto;' src='images/ajax-reload-animated.gif'/>
-      <div id='calendar-div' class='calendar-div' style='display: none;'> 
+      <div id='calendar-div' class='calendar-div'> 
       </div></div>"
 
     $("aside#right-side").append "<div class='courses'>
       <h2>Current Courses</h2>
       <div class='course-summary-div'>
         <img id='courseload' style='display: block; margin: 0 auto;' src='images/ajax-reload-animated.gif'/>
-        <table id='course-table' style='display: none;'>
+        <table id='course-table' class='course-table'>
           <thead>
             <th>Code</th>
             <th>Name</th>
@@ -204,7 +205,7 @@ class Display
       <h2><a style='float: right; font-size: 10px; font-weight: normal;' class='icon-calendar-day standalone-icon' href='/calendar'>View Calendar</a>Upcoming Assignments</h2>
       <div class='assignment-summary-div'>
         <img id='assignload' style='display: block; margin-left: auto; margin-right: auto' src='images/ajax-reload-animated.gif'/>
-        <table id='assignment-table' style='display: none;'>
+        <table id='assignment-table' class='assign-table'>
           <thead>
             <th>Due Date</th>
             <th>Name</th>
@@ -214,12 +215,6 @@ class Display
         </table>
       </div></div>"
 
-  formatting : () ->
-    notice = $('#notice-container')
-    notice.css('background', 'white')
-    notice.css('border', '1px solid #bbb')
-    notice.css('padding', '10px')
-
   events : () ->
     $('.assignments>h2').click () ->
       $('.assignment-summary-div').toggle()
@@ -227,9 +222,8 @@ class Display
       $('.course-summary-div').toggle()
 
   setup : () ->
-    @remove()
-    @add_divs()
-    @prettyfy()
+    @preRemove()
+    @addDivs()
     @getCalendar()
     @events()
 
@@ -241,7 +235,7 @@ class Display
     
     canvas_header = $('#header')
 
-    day = $('.day')
+    # day = $('.day')
     table = $('.clndr-table')
     table_header = $('.header-day')
     month = $('.month')
@@ -250,18 +244,18 @@ class Display
 
     month_text = month.html()
     month.html "<h2>#{month_text}</h2>"
-    month_header = $('.month>h2')
-    month_header.css 'text-align', 'center'
+    # month_header = $('.month>h2')
+    # month_header.css 'text-align', 'center'
 
-    table.css 'width', '100%'
+    # table.css 'width', '100%'
     
-    table_header.css 'text-align', 'center'
-    table_header.css 'background', '#eee'
-    table_header.css 'font-weight', 'bold'
+    # table_header.css 'text-align', 'center'
+    # table_header.css 'background', '#eee'
+    # table_header.css 'font-weight', 'bold'
     
-    day.css 'background', '#fff'
-    day.css 'padding', '2px'
-    day.css 'text-align', 'center'
+    # day.css 'background', '#fff'
+    # day.css 'padding', '2px'
+    # day.css 'text-align', 'center'
 
     today.css 'background', canvas_header.css('background-color')
 
@@ -270,64 +264,38 @@ class Display
 
 
 #  Needs to be set so that it will display without the loop.
-  displayAssignment : (assignment) ->
+  formatAssignment: (assignment) ->
+    link = @tools.createlink assignment.url, "#{assignment.worth} pts"
+    "<div id='#{assignemnt.id}'>
+      <h3>#{assignemnt.name}</h3> #{link}
+      <div style='display: none;'>
+        <h4></h4>
+        <span>
+          #{assignment.description}
+        </span>
+      </div>
+    </div>"
+  displayAssignment : (assignments) ->
     final_string = ""
     summary = $('.assignment-summary-div')
-    if @all_assignments.length > 0
-      @all_assignments.sort (a, b) ->
+
+    if assignemnts.lenght > 0
+      assignments.sort a, b ->
         a.due_date - b.due_date
-      range = moment().add 'days', 7
-      if assignRange && assignRange != ""
-        range = assignRange
-        
+      displayRange = moment().add 'days', 7
       today = moment()
-      for assignment in @all_assignments
-        if assignment.due_date <= range
-          if not assignment.submission
-            assignment_link = @tools.format_link(assignment.url, assignment.name)
-            date = null
-            style = ""
-
-            # @events.push {date: assignment.due_date.format('YYYY-DD-MM'), title: assignment.name, url: assignment.url}
-            
-            if assignment.due_date.get('date') == today.get('date')
-              if colors
-                style = "background: #FCDC3B;"
-              date = assignment.due_date.format "[Today at] h:m a"
-            else if assignment.due_date < today #&& display_late
-              if colors
-                style += "background: #{@HTML_RED};"
-              date = assignment.due_date.format "dd DD h:m a"
-            else if assignment.due_date.get('month') != today.get('month')
-              date = assignment.due_date.format "MMM DD"
-            else
-              date = assignment.due_date.format "dd DD"
-
-            final_string += "<tr id='#{assignment.id}' class='assign-row' style='#{style}'><td class='assign-date'>#{date}</td><td class='assign-name'>#{assignment_link}</td><td class='assign-points'>#{assignment.points_possible}</td></tr>"
-      tbody = $('#assign-t-body')
-      # clndr = $('#calendar-div').clndr();
-      # clndr.setEvents(@events);
-
-      tbody.html final_string
-
-      assign_date = $('.assign-date')
-      assign_name = $('.assign-name')
-      assign_points = $('.assign-points')
-      row = $('.assign-row')
-
-      assign_date.css 'width', '20%'
-      assign_date.css 'text-align', 'center'
-
-      assign_name.css 'width', '60%'
-
-      assign_points.css 'width', '20%'
-      assign_points.css 'text-align', 'center'
-
-      table = $('#assignment-table')
-      table.css 'margin', '0px auto'
-      table.css 'margin','0px'
-      table.css 'width', '100%'
-      table.fadeIn 500
+      for assignment in assignments
+        date = null
+        style = ""
+        if assignemnt.due_date <= displayRange && not assignment.submission #|| showLate && not assignment.submission # TODO
+          final_string = @formatAssignment assignment
+    
+    tbody = $('#assign-t-body')
+    assign_points = $('.assign-points')
+    row = $('.assign-row')
+    table = $('#assignment-table')
+    tbody.html final_string
+    table.fadeIn 500
 
     summary.fadeIn 500
 
@@ -378,22 +346,6 @@ class Display
 
     tbody.html final_string
 
-    code = $('.class-code')
-    link = $('.class-link')
-    grade = $('.class-grade')
-
-    code.css 'width', '20%'
-    code.css 'text-align', 'center'
-
-    link.css 'width', '60%'
-
-    grade.css 'width', '20%'
-    grade.css 'text-align', 'center'
-
-    table.css 'margin', '0px auto'
-    table.css 'margin','0px'
-    table.css 'width', '100%'
-
     table.fadeIn 500
 
   displayCourses : (courses) ->
@@ -430,33 +382,7 @@ startup = () =>
           
     @print_courses(arr)
 
-      
-  config.setup()
-  # cal.get_calendar()
-  # cour.query_courses()
-  # if canvaskey == undefined || canvaskey == null || canvaskey == ""
-  notice = $('#notice')
-    # url = $('.user_name>a').attr("href")
-  notice.html "<span style='color: red'>Canvas To Moddle has been disabled due to certain courses not displaying assignments. Instead of faulty data not being displayed, for a short durration the plugin will be disabled until an update is pushed.</span><br>Click here for progress on this issue: <a href='https://trello.com/c/oahSl8K3'>Click</a>"
-  notice.css 'cursor', 'pointer'
-    # notice.html "<span style='color: red'>
-    #   Auth Token Required.
-    #   <br/>
-    #   Make sure you have an Auth-Token saved.</span>
-    #   <br/><br/>
-    #   <ol>
-    #     <li>Create a token here: <a href='#{url}'>Create Token</a></li>
-    #     <li>Scroll down to the bottom of the page and click \"New Access Token\"</li>
-    #     <li>Copy the token which will look like 1~iocGw2co</li>
-    #     <li>Open your <a href='chrome://extensions/'>extensions</a> page and find the options link under the Canvas to Moodle Plugin.</li>
-    #     <li>Paste the token in the specified location.</li>
-    #     <li>Enjoy!</li>
-    #   </ol>"
-    # $('.calendar').hide()
-    # $('.courses').hide()
-    # $('.assignments').hide()
-
-$(docuemnt).ready ->
+$(document).ready ->
   ( ->
     checkIfAssideHasLoaded = setInterval( ->
       if $('ul.events').length > 0
