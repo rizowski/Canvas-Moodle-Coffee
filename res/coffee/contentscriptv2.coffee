@@ -1,23 +1,18 @@
 class CanvasExtension
-  settings = {
-    canvasKey : null,
-    assignments : {
-      color: false,
-      displayLate : false,
-      displayRange: "7 days",
-      gradeFormat : 1
-    }
-  }
+  canvaskey : null
+  settings : {}
 
-  tools = null
-  sync : chrome.storage.sync
-  local : chrome.storage.local
+  tools : null
+  sync : null
+  local : null
 
-  allAssignments : []
-  allCourses : []
+  keyLocation : "canvaskey"
+  settingsLocation : "settings"
 
   constructor : () ->
     @tools = new Tools()
+    @sync = chrome.storage.sync
+    @local = chrome.storage.local
 
   $.ajaxSetup
     cache: true
@@ -32,35 +27,41 @@ class CanvasExtension
       500 : () ->
         console.log 'Server error'
     headers: 
-      "Authorization" : "Bearer #{settings.canvasKey}"
       "Access-Control-Allow-Origin" : "*"
 
-  setKey : (item) ->
-    @settings.canvasKey = item
+  saveSettings : (settings) ->
+    @sync.set settings
 
-  # TODO This needs to be modified to reflect settings changes top
-  setKeys : (items) ->
-    if items.hasOwnProperty 'canvasKey'
-      console.log('TODO set key')
-    if items.hasOwnProperty 'colors'
-      console.log('TODO set colors')
-      colors = items.colors
-    if items.hasOwnProperty 'grades'
-      console.log('TODO SET GRADES')
-      grades = items.grades
-    if items.hasOwnProperty 'assignRange'
-      if items.assignRange != ""
-        input = items.assignRange.split ' '
-        assignRange = moment().add input[1], input[0]
-    if items.hasOwnProperty 'late'
-      display_late = items.late
+  saveCanvasKey : (key) ->
+    that = @
+    if key
+      key = key.replace /\s+/g, ''
 
-  getSyncSettings : () ->
-    @sync.get ['settings'], (settings) ->
-      @setKeys settings
+    mykeyobj = {}
+    mykeyobj[@keyLocation] = key
 
-  saveSettings : (item) ->
-    @sync.set item
+    @local.set(mykeyobj)
+
+  getSettings : (_callback) ->
+    that = @
+    @sync.get @settingsLocation, (item) ->
+      item.settings ?= {
+        assignments : {
+          color: false,
+          displayLate : false,
+          displayRange: "7 days"
+        },
+        courses : {
+          gradeFormat : 1
+        }
+      }
+      that.saveSettings item.settings
+      _callback item.settings
+
+  getCanvasKey : (_callback) ->
+    @local.get @keyLocation, (item) ->
+      _callback item.canvaskey
+
 
 class Tools
   constructor : () ->
@@ -98,6 +99,7 @@ class Tools
 class Query extends CanvasExtension
   courseUrl : "/api/v1/courses?include[]=total_scores&state[]=available"
   canvasCoursesUrl : "/courses/"
+  
   assignmentUrl : (_courseId) ->
     "/api/v1/courses/#{_courseId}/assignments?include[]=submission"
 
@@ -106,26 +108,18 @@ class Query extends CanvasExtension
       type: 'GET'
       url: @courseUrl
       crossDomain: true
+      headers:
+        "Authorization" : "Bearer #{@settings.canvasKey}"
       success: (data) =>
+        courses = []
         response = $(data)
         today = moment()
         for item in response
           end_date = moment(item.end_at)
           if end_date >= today
-            course = {}
-            course.id = item.id
-            course.start_date = moment(item.start_at)
-            course.end_date = end_date
-            course.code = item.course_code
-            course.name = item.name
-            course.current_grade = item.enrollments[0].computed_current_grade
-            course.current_score = item.enrollments[0].computed_current_score
-            course.final_grade = item.enrollments[0].computed_final_grade
-            course.final_score = item.enrollments[0].computed_final_score
-            course.url = @canvasCoursesUrl + course.id
-            @allCourses.push course
-            @queryAssignments(course.id)
-        _callback @allCourses
+            item.end_at = end_date
+            courses.push item
+        _callback courses
       complete: (xhr, status) =>
         $('#courseload').hide()
 
@@ -134,33 +128,32 @@ class Query extends CanvasExtension
       type: 'GET'
       url: @assignmentUrl(_courseId)
       crossDomain: true
+      headers:
+        "Authorization" : "Bearer #{@settings.canvasKey}"
       success: (data) =>
+        assignments = {
+          late:[],
+          today:[],
+          soon:[]
+        }
         response = $(response)
         today = moment()
         for item in response
-          assignment = {}
-          assignment.due_date = moment(item.due_at)
-          if assignment.due_date >= today
-            assignment.id = item.id
-            assignment.name = item.name
-            assignment.description = item.description
-            assignment.points_possible = item.points_possible
-            assignment.url = item.html_url
-            assignment.locked = item.locked_for_user
-            assignment.unlock_at = item.unlock_at
-            if item.hasOwnProperty 'submission'
-              assignment.submission = true
-              assignment.points_earned = item.submission.current_score
-              assignment.grade = item.submission.grade
-            added = $.grep @all_assignments, (assign) ->
-              assign.id == assignment.id
-            if added.length <= 0
-              @allAssignments.push assignment
-        _callback @allAssignments
-        # @hit_counter++
-        # @success_assignment(data)
+          item.due_at = moment(item.due_at)
+          if item.due_at < today
+            assignments.late.push item
+          else if item.due_at == today
+            assignments.today.push item
+          else
+            assignments.soon.push item
+            # Finds out if the assignment has been added before and ignores if it has
+            # added = $.grep @all_assignments, (assign) ->
+            #   assign.id == assignment.id
+            # if added.length <= 0
+            #   @allAssignments.push assignment
+        _callback assignments
       error: (xhr, status, error) =>
-        # @error_hit_counter++
+        console.log "QueryAssignments: #{status}"
       complete: (xhr, status) =>
         $('#assignload').hide()
 
@@ -244,18 +237,6 @@ class Display
 
     month_text = month.html()
     month.html "<h2>#{month_text}</h2>"
-    # month_header = $('.month>h2')
-    # month_header.css 'text-align', 'center'
-
-    # table.css 'width', '100%'
-    
-    # table_header.css 'text-align', 'center'
-    # table_header.css 'background', '#eee'
-    # table_header.css 'font-weight', 'bold'
-    
-    # day.css 'background', '#fff'
-    # day.css 'padding', '2px'
-    # day.css 'text-align', 'center'
 
     today.css 'background', canvas_header.css('background-color')
 
@@ -263,7 +244,7 @@ class Display
     calendar.fadeIn 500
 
 
-#  Needs to be set so that it will display without the loop.
+  #  Needs to be set so that it will display without the loop.
   formatAssignment: (assignment) ->
     link = @tools.createlink assignment.url, "#{assignment.worth} pts"
     "<div id='#{assignemnt.id}'>
@@ -354,33 +335,51 @@ class Display
 
   displayAssignments : (assignments) ->
 
+  notiMsg : (msg, type) ->
+    type ?= "ok"
+    noti = $('#notice')
+    container = $('#notice-container')
+    if type == "ok"
+      noti.html("<span style=\'color: green\'>#{msg}</span>")
+    else if type == "error"
+      noti.html("<span style=\'color: red\'>#{msg}</span>")
+    else
+      noti.html("<span>#{msg}</span>")
+    container.fadeIn(500)
+
 
 startup = () =>
   display = new Display()
   query = new Query()
 
-  query.queryCourses (response) ->
-    currentCourses = []
-    response = $(response)
-    today = moment()
-    for item in response
-      end_date = moment(item.end_at)
-      if end_date >= today
-        course = {}
-        course.id = item.id
-        course.start_date = moment(item.start_at)
-        course.end_date = end_date
-        course.code = item.course_code
-        course.name = item.name
-        course.current_grade = item.enrollments[0].computed_current_grade
-        course.current_score = item.enrollments[0].computed_current_score
-        course.final_grade = item.enrollments[0].computed_final_grade
-        course.final_score = item.enrollments[0].computed_final_score
-        course.url = query.canvasCourseUrl + course.id
-        currentCourses.push course
-        query.queryAssignments course.id, (response) ->
-          
-    @print_courses(arr)
+  query.getSettings (settings) ->
+    query.getCanvasKey (key) ->
+      if key == "" or not key
+        url = $('.user_name>a').attr("href")
+        display.notiMsg "Auth Token Required.
+        <br/>
+        Make sure you have an Auth-Token saved.</span>
+        <br/><br/>
+        <ol>
+          <li>Create a token here: <a href='#{url}'>Create Token</a></li>
+          <li>Scroll down to the bottom of the page and click \"New Access Token\"</li>
+          <li>Copy the token which will look like 1~iocGw2co</li>
+          <li>Paste it in this field: <input id='token' type='password' /></li>
+          <li>Enjoy!</li>
+        </ol>", "error"
+
+        $('#token').keyup () ->
+          query.saveCanvasKey $(@).val()
+          query.getCanvasKey (key) ->
+            if key != ""
+              $('#notice-container').fadeOut(500)
+              location.reload()
+      query.queryCourses (courses) ->
+        _.each courses, (course) ->
+          #TODO Create new Div structure for courses.
+          query.queryAssignments (assignments) ->
+            #TODO create new div structure for assignments
+
 
 $(document).ready ->
   ( ->
@@ -390,6 +389,4 @@ $(document).ready ->
         clearInterval checkIfAssideHasLoaded
       undefined
     , 50)
-    # getcanvaskey()
-    # getSyncSettings()
   )()
