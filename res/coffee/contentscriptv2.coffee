@@ -2,7 +2,6 @@ class CanvasExtension
   canvaskey : null
   settings : {}
 
-  tools : null
   sync : null
   local : null
 
@@ -10,7 +9,6 @@ class CanvasExtension
   settingsLocation : "settings"
 
   constructor : () ->
-    @tools = new Tools()
     @sync = chrome.storage.sync
     @local = chrome.storage.local
 
@@ -56,45 +54,14 @@ class CanvasExtension
         }
       }
       that.saveSettings item.settings
+      that.settings = item.settings
       _callback item.settings
 
   getCanvasKey : (_callback) ->
+    that = @
     @local.get @keyLocation, (item) ->
+      that.canvaskey = item.canvaskey
       _callback item.canvaskey
-
-
-class Tools
-  constructor : () ->
-
-  createLink : (url, text) ->
-    "<a href='#{url}'>#{text}</a>"
-
-  tableRow : (contents) ->
-    result = "<tr>"
-    for content in contents
-      result += "<td>#{content}</td>"
-    result += "</tr>"
-
-  createTable : (headers, contents) ->
-    headers ?= []
-    contents ?= []
-    return if headers.length != contents.length
-
-    final_string = "<table><thead>"
-    for header in headers
-      final_string += "<th>#{header}</th>"
-    final_string += "</thead><tbody>"
-    for content_items in contents
-      @table_row content_items
-    final_string += "</tbody></table>"
-
-    final_string
-
-  assignmentSort : (obj1, obj2) ->
-    if not obj1
-      return -1
-    if not obj2
-      return -1
 
 class Query extends CanvasExtension
   courseUrl : "/api/v1/courses?include[]=total_scores&state[]=available"
@@ -109,16 +76,48 @@ class Query extends CanvasExtension
       url: @courseUrl
       crossDomain: true
       headers:
-        "Authorization" : "Bearer #{@settings.canvasKey}"
+        "Authorization" : "Bearer #{@canvaskey}"
       success: (data) =>
-        courses = []
+        courses = {
+          previous: [],
+          current: []
+        }
         response = $(data)
-        today = moment()
+        today = moment().subtract('days',15)
         for item in response
+          item.url = @canvasCoursesUrl + item.id
           end_date = moment(item.end_at)
-          if end_date >= today
+          if item.enrollments
+            switch @settings.courses.gradeFormat
+              when 1
+                if item.enrollments[0].computed_current_grade
+                  item.grade = item.enrollments[0].computed_current_grade
+                else if item.enrollments[0].computed_current_score 
+                  item.grade = item.enrollments[0].computed_current_score
+                else
+                  item.grade = "NA"
+              when 2
+                if item.enrollments[0].computed_current_score 
+                  item.grade = item.enrollments[0].computed_current_score
+                else if item.enrollments[0].computed_current_grade
+                  item.grade = item.enrollments[0].computed_current_grade
+                else
+                  item.grade = "NA"
+              when 3
+                if item.enrollments[0].computed_current_score && item.enrollments[0].computed_current_grade
+                  item.grade = "#{item.enrollments[0].computed_current_grade} (#{item.enrollments[0].computed_current_score})"
+                else if item.enrollments[0].computed_current_grade
+                  item.grade = item.enrollments[0].computed_current_grade
+                else if item.enrollments[0].computed_current_score
+                  item.grade = item.enrollments[0].computed_current_score
+                else
+                  item.grade = "NA"
+            # TODO Set everything to Grade (Display format) So that way Logic is done in formatting
+          if end_date <= today
             item.end_at = end_date
-            courses.push item
+            courses.previous.push item
+          else
+            courses.current.push item
         _callback courses
       complete: (xhr, status) =>
         $('#courseload').hide()
@@ -129,19 +128,23 @@ class Query extends CanvasExtension
       url: @assignmentUrl(_courseId)
       crossDomain: true
       headers:
-        "Authorization" : "Bearer #{@settings.canvasKey}"
-      success: (data) =>
+        "Authorization" : "Bearer #{@canvaskey}"
+      success: (data) ->
         assignments = {
+          submitted:[],
           late:[],
           today:[],
           soon:[]
         }
-        response = $(response)
-        today = moment()
+        response = $(data)
+        today = moment().subtract('days', 25)
         for item in response
           item.due_at = moment(item.due_at)
           if item.due_at < today
-            assignments.late.push item
+            if item.submission
+              assignments.submitted.push item
+            else
+              assignments.late.push item
           else if item.due_at == today
             assignments.today.push item
           else
@@ -157,8 +160,9 @@ class Query extends CanvasExtension
       complete: (xhr, status) =>
         $('#assignload').hide()
 
-class Display
+class Display # extends CanvasExtension
   HTML_RED : "#FF9999"
+  # tools : null
 
   constructor : () ->
     @setup()
@@ -181,31 +185,16 @@ class Display
       </div></div>"
 
     $("aside#right-side").append "<div class='courses'>
-      <h2>Current Courses</h2>
-      <div class='course-summary-div'>
-        <img id='courseload' style='display: block; margin: 0 auto;' src='images/ajax-reload-animated.gif'/>
-        <table id='course-table' class='course-table'>
-          <thead>
-            <th>Code</th>
-            <th>Name</th>
-            <th>Grade</th>
-          </thead>
-          <tbody id='course-t-body'></tbody>
-        </table>
-      </div></div>"
+        <h2>Current Courses</h2>
+        <div id='course-content' class='course-summary-div'>
+          <img id='courseload' style='display: block; margin: 0 auto;' src='images/ajax-reload-animated.gif'/>
+        </div>
+      </div>"
 
     $("aside#right-side").append "<div class='assignments'>
       <h2><a style='float: right; font-size: 10px; font-weight: normal;' class='icon-calendar-day standalone-icon' href='/calendar'>View Calendar</a>Upcoming Assignments</h2>
       <div class='assignment-summary-div'>
         <img id='assignload' style='display: block; margin-left: auto; margin-right: auto' src='images/ajax-reload-animated.gif'/>
-        <table id='assignment-table' class='assign-table'>
-          <thead>
-            <th>Due Date</th>
-            <th>Name</th>
-            <th>Pts. Worth</th>
-          </thead>
-          <tbody id='assign-t-body'></tbody>
-        </table>
       </div></div>"
 
   events : () ->
@@ -280,54 +269,101 @@ class Display
 
     summary.fadeIn 500
 
-  displayCourse : (course) ->
-    final_string = ""
-    console.log "#{course.id}) #{course.name}"
-    course_link = @tools.createlink(course.url, course.name)
-    course_grade = ""
-    if grades == "1"
-      if course.current_grade
-        course_grade = "#{course.current_grade}"
-      else if course.current_score
-        course_grade = "#{course.current_score}"
-      else if course.current_grade && course.current_score
-        course_grade = "#{course.current_grade} (#{course.current_score})"
-      else
-        course_grade = ""
-    else if grades == "2"
-      if course.current_score
-        course_grade = "#{course.current_score}"
-      else if course.current_grade
-        course_grade = "#{course.current_grade}"
-      else if course.current_grade && course.current_score
-        course_grade = "#{course.current_grade} (#{course.current_score})"
-      else
-        course_grade = ""
-    else if grades == "3"
-      if course.current_grade && course.current_score
-        course_grade = "#{course.current_grade} (#{course.current_score})"
-      else if course.current_grade
-        course_grade = "#{course.current_grade}"
-      else if course.current_score
-        course_grade = "#{course.current_score}"
-      else
-        course_grade = ""
-    else
-      if course.current_grade
-        course_grade = "#{course.current_grade}"
-      else if course.current_score
-        course_grade = "#{course.current_score}"
-      else if course.current_grade && course.current_score
-        course_grade = "#{course.current_grade} (#{course.current_score})"
-      else
-        course_grade = ""
-    final_string += "<tr id='#{course.id}' ><td class='class-code'>[#{course.code}]</td><td class='class-link'>#{course_link}</td><td class='class-grade'>#{course_grade}</td></tr>"
-    table = $('#course-table')
-    tbody = $('#course-t-body')
+  insertCourse : (course) ->
+    finalString = "<div>"
+    url = @createLink course.url, course.course_code
+    arrow = chrome.extension.getURL "arrow-24.png"
+    img = "<img id='arrow#{course.id}' class='arrow' src='#{arrow}'/>"
+    finalString += "<h6>#{img} #{course.grade} | #{course.name}</h6>"
+    finalString += "<div id='#{course.id}' style='display:none;'>
+                      <div class='course-grade'>#{url}</div>
+                      <div class='course-features'>More features to come!</div>
+                    </div>"
+    finalString += "</div>"
 
-    tbody.html final_string
+    $("#course-content").append finalString
 
-    table.fadeIn 500
+    $("#arrow#{course.id}").click () ->
+      $(@).toggleClass "down-arrow"
+      $("##{course.id}").toggle()
+  # displayCourse : (course) ->
+  #   final_string = ""
+  #   console.log "#{course.id}) #{course.name}"
+  #   course_link = @tools.createlink(course.url, course.name)
+  #   course_grade = ""
+  #   if grades == "1"
+  #     if course.current_grade
+  #       course_grade = "#{course.current_grade}"
+  #     else if course.current_score
+  #       course_grade = "#{course.current_score}"
+  #     else if course.current_grade && course.current_score
+  #       course_grade = "#{course.current_grade} (#{course.current_score})"
+  #     else
+  #       course_grade = ""
+  #   else if grades == "2"
+  #     if course.current_score
+  #       course_grade = "#{course.current_score}"
+  #     else if course.current_grade
+  #       course_grade = "#{course.current_grade}"
+  #     else if course.current_grade && course.current_score
+  #       course_grade = "#{course.current_grade} (#{course.current_score})"
+  #     else
+  #       course_grade = ""
+  #   else if grades == "3"
+  #     if course.current_grade && course.current_score
+  #       course_grade = "#{course.current_grade} (#{course.current_score})"
+  #     else if course.current_grade
+  #       course_grade = "#{course.current_grade}"
+  #     else if course.current_score
+  #       course_grade = "#{course.current_score}"
+  #     else
+  #       course_grade = ""
+  #   else
+  #     if course.current_grade
+  #       course_grade = "#{course.current_grade}"
+  #     else if course.current_score
+  #       course_grade = "#{course.current_score}"
+  #     else if course.current_grade && course.current_score
+  #       course_grade = "#{course.current_grade} (#{course.current_score})"
+  #     else
+  #       course_grade = ""
+  #   final_string += "<tr id='#{course.id}' ><td class='class-code'>[#{course.code}]</td><td class='class-link'>#{course_link}</td><td class='class-grade'>#{course_grade}</td></tr>"
+  #   table = $('#course-table')
+  #   tbody = $('#course-t-body')
+
+  #   tbody.html final_string
+
+  #   table.fadeIn 500
+
+  createLink : (url, text) ->
+    "<a href='#{url}'>#{text}</a>"
+
+  tableRow : (contents) ->
+    result = "<tr>"
+    for content in contents
+      result += "<td>#{content}</td>"
+    result += "</tr>"
+
+  createTable : (headers, contents) ->
+    headers ?= []
+    contents ?= []
+    return if headers.length != contents.length
+
+    final_string = "<table><thead>"
+    for header in headers
+      final_string += "<th>#{header}</th>"
+    final_string += "</thead><tbody>"
+    for content_items in contents
+      @table_row content_items
+    final_string += "</tbody></table>"
+
+    final_string
+
+  assignmentSort : (obj1, obj2) ->
+    if not obj1
+      return -1
+    if not obj2
+      return -1
 
   displayCourses : (courses) ->
     for course in courses
@@ -375,9 +411,14 @@ startup = () =>
               $('#notice-container').fadeOut(500)
               location.reload()
       query.queryCourses (courses) ->
-        _.each courses, (course) ->
+        console.log courses
+        _.each courses.current, (course) ->
+          display.insertCourse course
           #TODO Create new Div structure for courses.
-          query.queryAssignments (assignments) ->
+          query.queryAssignments course.id, (assignments) ->
+            console.log assignments
+            _.each assignments.soon, (assignment) ->
+              console.log assignment
             #TODO create new div structure for assignments
 
 

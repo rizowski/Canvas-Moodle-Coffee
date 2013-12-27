@@ -34,10 +34,12 @@
         "storage"
     ],
     "web_accessible_resources":[
-        "contentscript.js.map",
-        "jquery-1.10.2.min.map",
-        "underscore-min.map",
-        "toastr.min.js.map"
+        "arrow-24.png"
+        // "contentscriptv2.coffee",
+        // "jquery-1.10.2.min.map",
+        // "underscore-min.map",
+        // "toastr.min.js.map",
+        // "contentscript.js.map"
     ],
     "content_security_policy": "script-src 'self' https://ssl.google-analytics.com; object-src 'self'"
 }

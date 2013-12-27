@@ -6,6 +6,7 @@ module.exports = (grunt) ->
 
 		uglify: {
 			options: {
+				sourceMap: '<% filename %>.map'
 				banner: '/*! <%= pkg.name %> <%= grunt.template.today("yyyy-mm-dd") %> */\n'
 			}
 		}
