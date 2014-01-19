@@ -1,4 +1,5 @@
 # set this up on forms instead of individual fields
+# Ignore certain courses
 class CanvasExtensionSettings
 
   sync : null

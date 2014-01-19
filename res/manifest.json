@@ -23,7 +23,8 @@
                 "toastr.min.js",
                 "moment.min.js",
                 "clndr-1.0.7.min.js",
-                "contentscript.js"
+                "contentscript.js",
+                "jquery.tinysort.min.js"
             ],
             "css" : ["style.css"]
         }
@@ -31,10 +32,12 @@
     "permissions":[
         "https://*.instructure.com/api/*",
         "https://lms.neumont.edu/api/*",
-        "storage"
+        "storage",
+        "tabs"
     ],
     "web_accessible_resources":[
-        "arrow-24.png"
+        "arrow-24.png",
+        "gear-24.png"
         // "contentscriptv2.coffee",
         // "jquery-1.10.2.min.map",
         // "underscore-min.map",
