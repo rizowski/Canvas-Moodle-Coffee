@@ -1,6 +1,6 @@
 <html>
 <head>
-	
+	<source src="options.css" type="text/">
 </head>
 <body>
 	<div class="content">
@@ -15,27 +15,31 @@
         <legend>Global Options</legend>
         
       </fieldset> -->
-			<div>
-           <fieldset>
-             <legend>Courses</legend>
-              Show Grades/Percents:
-              <select id="grades">
-                <option value="1" selected="true">Grade</option>
-                <option value="2">Percent</option>
-                <option value="3">Both</option>
-              </select><br/>
-           </fieldset>
-      </div>
-      <div>
-        <fieldset>
-          <legend>Assignments</legend>
-          Show Colors: <input id="colors" type="checkbox"/><br/>
-          Assignment Range: <input id="range" type="text" placeholder="Default 7 Days"/><br/>You can specify anything in words ex (7 days, 1 week, 4 months)
-          <br/>
-          Show Late Assignments: <input id="late" type="checkbox"/><br/>
-        </fieldset>
-      </div>
+     <fieldset>
+       <legend>Courses</legend>
+        Show:
+        <select id="grades" disabled="true">
+          <option value="1" selected="true">A</option>
+          <option value="2">100%</option>
+          <option value="3">A (100%)</option>
+        </select><br/>
+      </fieldset>
+      <fieldset>
+        <legend>Assignments</legend>
+        Show Colors: <input id="colors" type="checkbox" disabled="true" /><br/>
+        Assignment Range: <input id="range" type="text" placeholder="Default 7 Days" disabled="true" /><br/>You can specify anything in words ex (7 days, 1 week, 4 months)
+        <br/>
+        Show Late Assignments: <input id="late" type="checkbox" disabled="true" /><br/>
+      </fieldset>
 		</fieldset>
+    <div class="devsettings" style="display: none;">
+      <hr>
+      <fieldset>
+        <legend>Dev Settings</legend>
+        Course start: <input id="start" type="date" name="" value=""><br/>
+        Course end: <input id="end" type="date" name="" value="" >
+      </fieldset>
+    </div>
 	</div>
 </body>
 <script type="text/javascript" src="jquery.min.js"></script>
