@@ -18,7 +18,7 @@ module.exports = (grunt) ->
 			}
 			compile: {
 				files: {
-					'out/contentscript.js': 'res/coffee/contentscriptv2.coffee'
+					'out/contentscript.js': ['res/coffee/canvasextension.coffee', 'res/coffee/query.coffee', 'res/coffee/display.coffee', 'res/coffee/grinder.coffee']
 					'out/options.js': 'res/coffee/options.coffee'
 					'out/tracker.js': 'res/coffee/tracker.coffee'
 				}
